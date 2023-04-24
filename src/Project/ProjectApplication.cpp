@@ -143,7 +143,7 @@ void ProjectApplication::DrawLineBresenhamNaive(glm::i32vec2 start_pos, glm::i32
     }
 }
 
-void ProjectApplication::DrawLineBresenham(glm::i32vec2 start_pos, glm::i32vec2 end_pos, glm::vec4 color)
+void ProjectApplication::DrawLineBresenham(glm::i32vec2 start_pos, glm::i32vec2 end_pos, glm::vec4 color, bool centerOrigin)
 {
 
     int32_t dx = end_pos.x - start_pos.x;
@@ -164,7 +164,11 @@ void ProjectApplication::DrawLineBresenham(glm::i32vec2 start_pos, glm::i32vec2 
 
     while (x != end_pos.x || y != end_pos.y)
     {
-        DrawPixel(x, y, color);
+        if (centerOrigin)
+            DrawPixelCentreOrigin(x, y, color);
+        else
+            DrawPixel(x, y, color);
+        
         int32_t error_doubled = error * 2;
         if (error_doubled >= dy)
         {
@@ -201,18 +205,21 @@ void ProjectApplication::BuildSceneOneCommands()
     auto DrawLineCommand = [&](glm::i32vec2 start, glm::i32vec2 end, glm::vec4 color)
     {
         std::function<void()> func = 
-            std::bind(&ProjectApplication::DrawLineBresenham, this, start, end, color);
+            std::bind(&ProjectApplication::DrawLineBresenham, this, start, end, color, true);
         return func;
     };
 
-    //A white square example
-    renderCommandQueue.push(DrawLineCommand(glm::ivec2(200, 200), glm::ivec2(400, 200), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)));
-    renderCommandQueue.push(DrawLineCommand(glm::ivec2(400, 200), glm::ivec2(400, 400), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)));
-    renderCommandQueue.push(DrawLineCommand(glm::ivec2(400, 400), glm::ivec2(200, 400), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)));
-    renderCommandQueue.push(DrawLineCommand(glm::ivec2(200, 400), glm::ivec2(200, 200), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)));
-    
-    renderCommandQueue.push(DrawLineCommand(glm::ivec2(200, 200), glm::ivec2(400, 400), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)));
-    renderCommandQueue.push(DrawLineCommand(glm::ivec2(200, 400), glm::ivec2(400, 200), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)));
+
+    static constexpr int32_t square_size = 300;
+
+    //A white square example centered around the origin
+    renderCommandQueue.push(DrawLineCommand(glm::ivec2(-1 * square_size, -1 * square_size), glm::ivec2(1 * square_size, -1 * square_size), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)));
+    renderCommandQueue.push(DrawLineCommand(glm::ivec2(1 * square_size, -1 * square_size), glm::ivec2(1 * square_size, 1 * square_size), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)));
+    renderCommandQueue.push(DrawLineCommand(glm::ivec2(1 * square_size, 1 * square_size), glm::ivec2(-1 * square_size, 1 * square_size), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)));
+    renderCommandQueue.push(DrawLineCommand(glm::ivec2(-1 * square_size, 1 * square_size), glm::ivec2(-1 * square_size, -1 * square_size), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)));
+
+    renderCommandQueue.push(DrawLineCommand(glm::ivec2(-1 * square_size, -1 * square_size), glm::ivec2(1 * square_size, 1 * square_size), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)));
+    renderCommandQueue.push(DrawLineCommand(glm::ivec2(1 * square_size, -1 * square_size), glm::ivec2(-1 * square_size, 1 * square_size), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)));
 
 
 }
@@ -242,6 +249,8 @@ void ProjectApplication::RenderSceneTwo()
     ClearFBO(screen_draw_fbo, clear_screen_color);
 
     //Don't need bother with the dirty optimization stuff
+
+    //Testing drawing center origin
 }
 
 
