@@ -69,11 +69,11 @@ bool ProjectApplication::Load()
     }
 
     CreateBuffers();
-
+    BuildSceneOneCommands();
     return true;
 }
 
-void ProjectApplication::Update()
+void ProjectApplication::Update( double dt)
 {
     if (IsKeyPressed(GLFW_KEY_ESCAPE))
     {
@@ -104,9 +104,9 @@ void ProjectApplication::DrawPixelsToScreen()
     glBlitNamedFramebuffer(pixel_draw_fbo, screen_draw_fbo, 0, 0, windowWidth, windowHeight, 0, 0, windowWidth, windowHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 }
 
-void ProjectApplication::DrawPixel(int32_t x, int32_t y, glm::vec4 color)
+void ProjectApplication::DrawPixel(int32_t x, int32_t y, glm::vec4 color, int32_t x_offset, int32_t y_offset)
 {
-    glTextureSubImage2D(pixel_texture, 0, x, y, 1, 1, GL_RGBA, GL_FLOAT, glm::value_ptr(color));
+    glTextureSubImage2D(pixel_texture, 0, x + x_offset, y + y_offset, 1, 1, GL_RGBA, GL_FLOAT, glm::value_ptr(color));
 }
 
 
@@ -124,7 +124,7 @@ void ProjectApplication::DrawPixelLineNaive(int32_t x_start, int32_t y_start, in
     }
 }
 
-void ProjectApplication::DrawLineBresenham(glm::i32vec2 start_pos, glm::i32vec2 end_pos, glm::vec4 color)
+void ProjectApplication::DrawLineBresenhamNaive(glm::i32vec2 start_pos, glm::i32vec2 end_pos, glm::vec4 color)
 {
     int32_t dx = end_pos.x - start_pos.x;
     int32_t dy = end_pos.y - start_pos.y;
@@ -143,31 +143,113 @@ void ProjectApplication::DrawLineBresenham(glm::i32vec2 start_pos, glm::i32vec2 
     }
 }
 
-void ProjectApplication::RenderScene()
+void ProjectApplication::DrawLineBresenham(glm::i32vec2 start_pos, glm::i32vec2 end_pos, glm::vec4 color)
+{
+
+    int32_t dx = end_pos.x - start_pos.x;
+    dx = dx > 0 ? dx : -dx;
+
+    int32_t sx = start_pos.x < end_pos.x ? 1 : -1;
+
+    int32_t dy = end_pos.y - start_pos.y;
+    dy = dy > 0 ? -dy : dy;
+
+    int32_t sy = start_pos.y < end_pos.y ? 1 : -1;
+    int32_t error = dx + dy;
+
+    int32_t x = start_pos.x;
+    int32_t y = start_pos.y;
+
+    int32_t error_doubled = error * 2;
+
+    while (x != end_pos.x || y != end_pos.y)
+    {
+        DrawPixel(x, y, color);
+        int32_t error_doubled = error * 2;
+        if (error_doubled >= dy)
+        {
+            if (x == end_pos.x)
+                return;
+            error += dy;
+            x += sx;
+        }
+        if (error_doubled <= dx)
+        {
+            if (y == end_pos.y)
+                return;
+            error += dx;
+            y += sy;
+        }
+    }
+}
+
+void ProjectApplication::DrawPixelCentreOrigin(int32_t x, int32_t y, glm::vec4 color)
+{
+    DrawPixel(x, y, color, windowWidth_half, windowHeight_half);
+}
+
+
+
+void ProjectApplication::RenderScene([[maybe_unused]] double dt)
 {
     RenderSceneOne();
 }
 
+
+void ProjectApplication::BuildSceneOneCommands()
+{
+    auto DrawLineCommand = [&](glm::i32vec2 start, glm::i32vec2 end, glm::vec4 color)
+    {
+        std::function<void()> func = 
+            std::bind(&ProjectApplication::DrawLineBresenham, this, start, end, color);
+        return func;
+    };
+
+    //A white square example
+    renderCommandQueue.push(DrawLineCommand(glm::ivec2(200, 200), glm::ivec2(400, 200), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)));
+    renderCommandQueue.push(DrawLineCommand(glm::ivec2(400, 200), glm::ivec2(400, 400), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)));
+    renderCommandQueue.push(DrawLineCommand(glm::ivec2(400, 400), glm::ivec2(200, 400), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)));
+    renderCommandQueue.push(DrawLineCommand(glm::ivec2(200, 400), glm::ivec2(200, 200), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)));
+    
+    renderCommandQueue.push(DrawLineCommand(glm::ivec2(200, 200), glm::ivec2(400, 400), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)));
+    renderCommandQueue.push(DrawLineCommand(glm::ivec2(200, 400), glm::ivec2(400, 200), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)));
+
+
+}
+
 void ProjectApplication::RenderSceneOne()
 {
-    ClearFBO(pixel_draw_fbo, pixel_clear_screen_color);
     ClearFBO(screen_draw_fbo, clear_screen_color);
 
-    DrawPixel(10, 10, glm::vec4(0.0f, 0.0f, 1.0f, 1.0f));
-    DrawPixel(11, 11, glm::vec4(0.0f, 0.0f, 1.0f, 1.0f));
-    DrawPixel(12, 12, glm::vec4(0.0f, 0.0f, 1.0f, 1.0f));
+    if (is_screen_dirty)
+    {
+        ClearFBO(pixel_draw_fbo, pixel_clear_screen_color);
 
-    DrawPixelLineNaive(0, 40, 800, 700, glm::vec4(1.0f, 1.0f, 0.0f, 1.0f));
-    DrawLineBresenham(glm::i32vec2(0, 40), glm::i32vec2(800, 700), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+        while (!renderCommandQueue.empty())
+        {
+            renderCommandQueue.front()();
+            renderCommandQueue.pop();
+        }
+
+        is_screen_dirty = false;
+    }
 
     DrawPixelsToScreen();
 }
 
-void ProjectApplication::RenderUI()
+void ProjectApplication::RenderSceneTwo()
 {
-    ImGui::Begin("Window");
+    ClearFBO(screen_draw_fbo, clear_screen_color);
+
+    //Don't need bother with the dirty optimization stuff
+}
+
+
+void ProjectApplication::RenderUI([[maybe_unused]] double dt)
+{
+    ImGui::Begin("Performance");
     {
-        ImGui::TextUnformatted("Hello World!");
+        ImGui::Text("Framerate: %.0f Hertz", 1 / dt);
         ImGui::End();
     }
 }

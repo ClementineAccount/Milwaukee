@@ -16,15 +16,20 @@ protected:
     virtual bool Initialize();
     virtual bool Load();
     virtual void Unload();
-    virtual void RenderScene();
-    virtual void RenderUI();
-    virtual void Update();
+    virtual void RenderScene(double dt);
+    virtual void RenderUI(double dt);
+    virtual void Update(double dt);
 
     int windowWidth = 1600;
     int windowHeight = 900;
 
-private:
+    int windowWidth_half = windowWidth / 2;
+    int windowHeight_half = windowHeight / 2;
+
     GLFWwindow* _windowHandle = nullptr;
-    void Render();
+
+private:
+  
+    void Render(double dt);
 
 };

@@ -30,11 +30,16 @@ void Application::Run()
 
     spdlog::info("App: Loaded");
 
+    double prevFrame = glfwGetTime();
     while (!glfwWindowShouldClose(_windowHandle))
     {
+        double curFrame = glfwGetTime();
+        double dt = curFrame - prevFrame;
+        prevFrame = curFrame;
+
         glfwPollEvents();
-        Update();
-        Render();
+        Update(dt);
+        Render(dt);
     }
 
     spdlog::info("App: Unloading");
@@ -136,16 +141,16 @@ void Application::Unload()
     glfwTerminate();
 }
 
-void Application::Render()
+void Application::Render([[maybe_unused]] double dt)
 {
     ZoneScopedC(tracy::Color::Red2);
 
-    RenderScene();
+    RenderScene(dt);
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
     {
-        RenderUI();
+        RenderUI(dt);
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         ImGui::EndFrame();
@@ -154,15 +159,15 @@ void Application::Render()
     glfwSwapBuffers(_windowHandle);
 }
 
-void Application::RenderScene()
+void Application::RenderScene([[maybe_unused]] double dt)
 {
 }
 
-void Application::RenderUI()
+void Application::RenderUI([[maybe_unused]] double dt)
 {
 }
 
-void Application::Update()
+void Application::Update([[maybe_unused]] double dt)
 {
 }
 
