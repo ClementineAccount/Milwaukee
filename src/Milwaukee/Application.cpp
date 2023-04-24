@@ -55,9 +55,26 @@ void Application::Close()
     glfwSetWindowShouldClose(_windowHandle, 1);
 }
 
+
 bool Application::IsKeyPressed(int32_t key)
 {
     return glfwGetKey(_windowHandle, key) == GLFW_PRESS;
+}
+
+bool Application::IsMouseKeyPressed(int32_t key)
+{
+    return glfwGetMouseButton(_windowHandle, key) == GLFW_PRESS;
+
+}
+
+bool Application::IsKeyRelease(int32_t key)
+{
+    return glfwGetKey(_windowHandle, key) == GLFW_RELEASE;
+}
+
+void Application::GetMousePosition(double& mouseX, double& mouseY)
+{
+    glfwGetCursorPos(_windowHandle, &mouseX, &mouseY);  
 }
 
 bool Application::Initialize()
@@ -101,7 +118,6 @@ bool Application::Initialize()
     ImGui_ImplGlfw_InitForOpenGL(_windowHandle, true);
     ImGui_ImplOpenGL3_Init();
     ImGui::StyleColorsDark();
-
 
 
     return true;

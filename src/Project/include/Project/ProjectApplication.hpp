@@ -29,19 +29,23 @@ private:
     void CreateBuffers();
     void ClearFBO(uint32_t fbo, glm::vec4 color);
 
+
     void DrawPixelsToScreen();
 
     //Render commands
 
+
+    
+
     void DrawPixel(int32_t x, int32_t y, glm::vec4 color, int32_t x_offset = 0, int32_t y_offset = 0);
     void DrawPixelCentreOrigin(int32_t x, int32_t y, glm::vec4 color);
-
-
     void DrawPixelLineNaive(int32_t x_start, int32_t y_start, int32_t x_end, int32_t y_end, glm::vec4 color);
     void DrawLineBresenhamNaive(glm::i32vec2 start_pos, glm::i32vec2 end_pos, glm::vec4 color);
-    
     void DrawLineBresenham(glm::i32vec2 start_pos, glm::i32vec2 end_pos, glm::vec4 color, bool centerOrigin = true);
 
+
+
+    void DrawFilledSquare(glm::i32vec2 center, glm::vec4 color, int32_t length = 30, bool centerOrigin = false);
 
     //Some 'scenes' which are just collection of function calls
     void BuildSceneOneCommands();
@@ -52,6 +56,7 @@ private:
     bool MakeShader(std::string_view vertexShaderFilePath, std::string_view fragmentShaderFilePath);
 
 private:
+
     uint32_t _shaderProgram;
 
     std::queue<std::function<void()>> renderCommandQueue;
@@ -65,6 +70,9 @@ private:
 
     //Destination for drawing/reading pixels
     uint32_t  pixel_texture;
+
+    //uint32_t draw_max_width;
+    //uint32_t draw_max_height;
 
     uint32_t currently_binded_fbo;
 

@@ -11,6 +11,11 @@ public:
 protected:
     void Close();
     bool IsKeyPressed(int32_t key);
+    bool IsKeyRelease(int32_t key);
+
+    bool IsMouseKeyPressed(int32_t key);
+    void GetMousePosition(double& mouseX, double& mouseY);
+
     virtual void AfterCreatedUiContext();
     virtual void BeforeDestroyUiContext();
     virtual bool Initialize();
@@ -27,6 +32,8 @@ protected:
     int windowHeight_half = windowHeight / 2;
 
     GLFWwindow* _windowHandle = nullptr;
+
+
 
 private:
   

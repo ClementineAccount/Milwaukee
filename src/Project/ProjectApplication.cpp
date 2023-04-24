@@ -68,6 +68,7 @@ bool ProjectApplication::Load()
         return false;
     }
 
+
     CreateBuffers();
     BuildSceneOneCommands();
     return true;
@@ -106,6 +107,13 @@ void ProjectApplication::DrawPixelsToScreen()
 
 void ProjectApplication::DrawPixel(int32_t x, int32_t y, glm::vec4 color, int32_t x_offset, int32_t y_offset)
 {
+    //Bounds check. Simply don't draw if out of bounds
+    if (x < 0 || y < 0)
+        return;
+
+    if (x > windowWidth || y > windowHeight)
+        return;
+
     glTextureSubImage2D(pixel_texture, 0, x + x_offset, y + y_offset, 1, 1, GL_RGBA, GL_FLOAT, glm::value_ptr(color));
 }
 
@@ -192,11 +200,28 @@ void ProjectApplication::DrawPixelCentreOrigin(int32_t x, int32_t y, glm::vec4 c
     DrawPixel(x, y, color, windowWidth_half, windowHeight_half);
 }
 
+void ProjectApplication::DrawFilledSquare(glm::i32vec2 center, glm::vec4 color, int32_t length, bool centerOrigin)
+{
+    //Start from the top right possible
+    glm::i32vec2 bottom_left = center - glm::i32vec2(length / 2, length / 2);
 
+    //Draw row by row from the top left
+    for (int32_t y = bottom_left.y; y < bottom_left.y + length; y += 1)
+    {
+        for (int32_t x = bottom_left.x; x < bottom_left.x + length; x += 1)
+        {
+            if (centerOrigin)
+                DrawPixelCentreOrigin(x, y, color);
+            else
+                DrawPixel(x, y, color);
+        }   
+    }
+}
 
 void ProjectApplication::RenderScene([[maybe_unused]] double dt)
 {
-    RenderSceneOne();
+    //RenderSceneOne();
+    RenderSceneTwo();
 }
 
 
@@ -246,11 +271,51 @@ void ProjectApplication::RenderSceneOne()
 
 void ProjectApplication::RenderSceneTwo()
 {
+    static bool firstRun = true;
+
     ClearFBO(screen_draw_fbo, clear_screen_color);
 
-    //Don't need bother with the dirty optimization stuff
+    if (firstRun)
+    {
+        ClearFBO(pixel_draw_fbo, pixel_clear_screen_color);
+        firstRun = false;
+    }
 
-    //Testing drawing center origin
+
+    double mouseX = 0;
+    double mouseY = 0;
+    GetMousePosition(mouseX, mouseY);
+
+    if (IsMouseKeyPressed(GLFW_MOUSE_BUTTON_1))
+    {
+        glfwSetInputMode(_windowHandle, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+        if (glfwRawMouseMotionSupported())
+            glfwSetInputMode(_windowHandle, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+
+        mouseY = windowHeight - mouseY;
+        DrawFilledSquare(glm::i32vec2(static_cast<int32_t>(mouseX), static_cast<int32_t>(mouseY)), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f));
+        //DrawPixel(static_cast<int32_t>(mouseX), static_cast<int32_t>(mouseY), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f));
+    }
+    else if (IsMouseKeyPressed(GLFW_MOUSE_BUTTON_2))
+    {
+        ClearFBO(pixel_draw_fbo, pixel_clear_screen_color);
+    }
+    else
+    {
+        glfwSetInputMode(_windowHandle, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+
+        if (glfwRawMouseMotionSupported())
+            glfwSetInputMode(_windowHandle, GLFW_RAW_MOUSE_MOTION, GLFW_FALSE);
+
+
+        //Ensure the cursor once set to normal is in the same position as the 'disabled cursor's' position.
+        glfwSetCursorPos(_windowHandle, mouseX, mouseY); 	
+    }
+    DrawPixelsToScreen();
+
+
+
 }
 
 
