@@ -1,4 +1,4 @@
-#include <Project.Library/Application.hpp>
+#include <Milwaukee/Application.hpp>
 
 #include <spdlog/spdlog.h>
 #include <glad/glad.h>
@@ -74,10 +74,7 @@ bool Application::Initialize()
     const auto primaryMonitor = glfwGetPrimaryMonitor();
     const auto primaryMonitorVideoMode = glfwGetVideoMode(primaryMonitor);
 
-    constexpr int windowWidth = 1920;
-    constexpr int windowHeight = 1080;
-
-    _windowHandle = glfwCreateWindow(windowWidth, windowHeight, "Project Template", nullptr, nullptr);
+    _windowHandle = glfwCreateWindow(windowWidth, windowHeight, "Milwaukee Renderer", nullptr, nullptr);
     if (_windowHandle == nullptr)
     {
         spdlog::error("Glfw: Unable to create window");

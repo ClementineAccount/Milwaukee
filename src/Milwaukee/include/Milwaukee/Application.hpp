@@ -20,7 +20,11 @@ protected:
     virtual void RenderUI();
     virtual void Update();
 
+    int windowWidth = 1600;
+    int windowHeight = 900;
+
 private:
     GLFWwindow* _windowHandle = nullptr;
     void Render();
+
 };
