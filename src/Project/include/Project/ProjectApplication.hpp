@@ -57,7 +57,7 @@ private:
     std::queue<std::function<void()>> renderCommandQueue;
 
     glm::vec4 clear_screen_color{0.0f, 1.0f, 0.0f, 1.0f};
-    glm::vec4 pixel_clear_screen_color{0.0f, 0.0f, 0.0f, 1.0f};
+    glm::vec4 pixel_clear_screen_color{0.2f, 0.2f, 0.2f, 1.0f};
 
 
     //Ideally should be a PBO that I can directly blit to default framebuffer later
