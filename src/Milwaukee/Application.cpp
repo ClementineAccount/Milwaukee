@@ -82,6 +82,8 @@ bool Application::Initialize()
         return false;
     }
 
+
+
     const auto screenWidth = primaryMonitorVideoMode->width;
     const auto screenHeight = primaryMonitorVideoMode->height;
     glfwSetWindowPos(_windowHandle, screenWidth / 2 - windowWidth / 2, screenHeight / 2 - windowHeight / 2);
@@ -94,6 +96,8 @@ bool Application::Initialize()
     ImGui_ImplGlfw_InitForOpenGL(_windowHandle, true);
     ImGui_ImplOpenGL3_Init();
     ImGui::StyleColorsDark();
+
+
 
     return true;
 }
@@ -116,7 +120,7 @@ bool Application::Load()
         }
     }, nullptr);
     glClearColor(0.05f, 0.02f, 0.07f, 1.0f);
-
+    glDisable(GL_FRAMEBUFFER_SRGB);
     glfwSwapInterval(1);
 
     return true;
