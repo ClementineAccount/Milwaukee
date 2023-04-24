@@ -24,6 +24,7 @@
 #include <set>
 
 
+
 void ProjectApplication::AfterCreatedUiContext()
 {
 }
@@ -68,6 +69,9 @@ bool ProjectApplication::Load()
         return false;
     }
 
+
+
+    current_brush_length = starting_brush_length;
 
     CreateBuffers();
     BuildSceneOneCommands();
@@ -277,10 +281,18 @@ void ProjectApplication::RenderSceneTwo()
 
     if (firstRun)
     {
+        //auto callback = std::bind(&ProjectApplication::BrushControlCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
+        glfwSetWindowUserPointer(this->_windowHandle, this);
+        glfwSetScrollCallback(this->_windowHandle, [](GLFWwindow* window, double xoffset, double yoffset) {
+            auto self = static_cast<ProjectApplication*>(glfwGetWindowUserPointer(window));
+            if(self != nullptr)
+                self->BrushControlCallback(xoffset, yoffset);
+            });
+
+
         ClearFBO(pixel_draw_fbo, pixel_clear_screen_color);
         firstRun = false;
     }
-
 
     double mouseX = 0;
     double mouseY = 0;
@@ -294,8 +306,11 @@ void ProjectApplication::RenderSceneTwo()
             glfwSetInputMode(_windowHandle, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
 
         mouseY = windowHeight - mouseY;
-        DrawFilledSquare(glm::i32vec2(static_cast<int32_t>(mouseX), static_cast<int32_t>(mouseY)), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f));
+        DrawFilledSquare(glm::i32vec2(static_cast<int32_t>(mouseX), static_cast<int32_t>(mouseY)), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f), current_brush_length);
         //DrawPixel(static_cast<int32_t>(mouseX), static_cast<int32_t>(mouseY), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f));
+
+        DrawPixelsToScreen();
+
     }
     else if (IsMouseKeyPressed(GLFW_MOUSE_BUTTON_2))
     {
@@ -312,8 +327,8 @@ void ProjectApplication::RenderSceneTwo()
         //Ensure the cursor once set to normal is in the same position as the 'disabled cursor's' position.
         glfwSetCursorPos(_windowHandle, mouseX, mouseY); 	
     }
+    
     DrawPixelsToScreen();
-
 
 
 }
@@ -324,8 +339,17 @@ void ProjectApplication::RenderUI([[maybe_unused]] double dt)
     ImGui::Begin("Performance");
     {
         ImGui::Text("Framerate: %.0f Hertz", 1 / dt);
+        ImGui::Text("Current Brush Length: %d", current_brush_length);
         ImGui::End();
     }
+}
+
+
+void ProjectApplication::BrushControlCallback(double xoffset, double yoffset)
+{
+    current_brush_length += static_cast<int32_t>(yoffset);
+    if (current_brush_length < 0)
+        current_brush_length = 1;
 }
 
 

@@ -52,6 +52,7 @@ private:
     void RenderSceneOne();
     void RenderSceneTwo();
 
+    void BrushControlCallback(double xoffset, double yoffset);
 
     bool MakeShader(std::string_view vertexShaderFilePath, std::string_view fragmentShaderFilePath);
 
@@ -78,6 +79,9 @@ private:
 
     //default framebuffer
     uint32_t screen_draw_fbo = 0;
+
+    static constexpr int32_t starting_brush_length = 30;
+    int32_t current_brush_length;
 
     bool is_screen_dirty = true;
 
