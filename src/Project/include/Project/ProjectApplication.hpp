@@ -42,6 +42,44 @@ private:
 };
 
 
+
+class DrawFrameBuffer
+{
+public:
+    DrawFrameBuffer() = delete;
+    DrawFrameBuffer(int32_t width, int32_t height);
+
+    void DrawPixel(int32_t x, int32_t y, glm::vec4 color, int32_t x_offset = 0, int32_t y_offset = 0);
+
+    glm::vec4 clear_color{0.2f, 0.2f, 0.2f, 1.0f};
+    uint32_t  fbo_id{0};
+    uint32_t  tex_id{0};
+
+    int32_t width;
+    int32_t height;
+};
+
+
+//Pixel drawing canvas
+class Canvas
+{
+public:
+    Canvas() = delete;
+    Canvas(int32_t width, int32_t height);
+
+
+    void DrawPixel(int32_t x, int32_t y, glm::vec4 color);
+    void ClearCanvas();
+    void DrawCanvasToFBO(DrawFrameBuffer& FBO) const;
+
+    int32_t width;
+    int32_t height;
+
+    glm::vec4 clear_color{0.2f, 0.2f, 0.2f, 1.0f};
+    std::vector<glm::vec4> canvas_color_buffer;
+};
+
+
 class ProjectApplication final : public Application
 {
 protected:
@@ -55,17 +93,13 @@ protected:
 
 private:
 
-    void CreateBuffers();
+    //void CreateBuffers();
     void ClearFBO(uint32_t fbo, glm::vec4 color);
-
+    void ClearCanvas();
 
     void DrawPixelsToScreen();
 
     //Render commands
-
-
-    
-
     void DrawPixel(int32_t x, int32_t y, glm::vec4 color, int32_t x_offset = 0, int32_t y_offset = 0);
     void DrawPixelCentreOrigin(int32_t x, int32_t y, glm::vec4 color);
     void DrawPixelLineNaive(int32_t x_start, int32_t y_start, int32_t x_end, int32_t y_end, glm::vec4 color);
@@ -73,15 +107,19 @@ private:
     void DrawLineBresenham(glm::i32vec2 start_pos, glm::i32vec2 end_pos, glm::vec4 color, bool centerOrigin = true);
     void DrawFilledSquare(glm::i32vec2 center, glm::vec4 color, int32_t length = 30, bool centerOrigin = false);
 
+    void DrawFilledSquareCanvas(glm::i32vec2 center, glm::vec4 color, int32_t length = 30);
+
+    void DrawPixel();
+
     //Some 'scenes' which are just collection of function calls
     void BuildSceneOneCommands();
     void RenderSceneOne();
     void RenderSceneTwo();
 
+    void FillScreenBenchmarks();
 
     //Simple sphere projection with rays
     void RenderSceneThree(double dt);
-
 
     void BrushControlCallback(double xoffset, double yoffset);
 
@@ -93,18 +131,8 @@ private:
 
     std::queue<std::function<void()>> renderCommandQueue;
 
+    //for the default framebuffer
     glm::vec4 clear_screen_color{0.0f, 1.0f, 0.0f, 1.0f};
-    glm::vec4 pixel_clear_screen_color{0.2f, 0.2f, 0.2f, 1.0f};
-
-
-    //Ideally should be a PBO that I can directly blit to default framebuffer later
-    uint32_t  pixel_draw_fbo;
-
-    //Destination for drawing/reading pixels
-    uint32_t  pixel_texture;
-
-    //uint32_t draw_max_width;
-    //uint32_t draw_max_height;
 
     uint32_t currently_binded_fbo;
 
@@ -116,4 +144,6 @@ private:
 
     bool is_screen_dirty = true;
 
+    std::unique_ptr<DrawFrameBuffer> draw_framebuffer;
+    std::unique_ptr<Canvas> draw_canvas;
 };

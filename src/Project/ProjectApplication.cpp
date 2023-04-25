@@ -25,6 +25,53 @@
 #include <iostream>
 
 
+Canvas::Canvas(int32_t width, int32_t height)
+{
+    this->width = width;
+    this->height = height;
+
+    canvas_color_buffer.resize(static_cast<size_t>(width) * static_cast<size_t>(height));
+    ClearCanvas();
+}
+
+void Canvas::ClearCanvas()
+{
+    std::fill(canvas_color_buffer.begin(), canvas_color_buffer.end(), clear_color);
+}
+
+void Canvas::DrawCanvasToFBO(DrawFrameBuffer& FBO) const
+{
+    glTextureSubImage2D(FBO.tex_id, 0, 0, 0, FBO.width, FBO.height, GL_RGBA, GL_FLOAT, canvas_color_buffer.data());
+}
+
+DrawFrameBuffer::DrawFrameBuffer(int32_t width, int32_t height)
+{
+    this->width = width;
+    this->height = height;
+
+    glCreateTextures(GL_TEXTURE_2D, 1, &tex_id);
+
+    glTextureParameteri(tex_id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
+    glTextureParameteri(tex_id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+    glTextureParameteri(tex_id, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTextureParameteri(tex_id, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    glTextureStorage2D(tex_id, 1, GL_RGBA8, width, height);
+
+    glCreateFramebuffers(1, &fbo_id);
+    glNamedFramebufferTexture(fbo_id, GL_COLOR_ATTACHMENT0, tex_id, 0);
+
+    //glBindFramebuffer(GL_FRAMEBUFFER, fbo_id);
+    //glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
+    //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
+void DrawFrameBuffer::DrawPixel(int32_t x, int32_t y, glm::vec4 color, int32_t x_offset, int32_t y_offset)
+{
+    glTextureSubImage2D(tex_id, 0, x + x_offset, y + y_offset, 1, 1, GL_RGBA, GL_FLOAT, glm::value_ptr(color));
+}
+
+
 void ProjectApplication::AfterCreatedUiContext()
 {
 }
@@ -32,28 +79,6 @@ void ProjectApplication::AfterCreatedUiContext()
 void ProjectApplication::BeforeDestroyUiContext()
 {
 
-}
-
-void ProjectApplication::CreateBuffers()
-{
-    glCreateTextures(GL_TEXTURE_2D, 1, &pixel_texture);
-
-    glTextureParameteri(pixel_texture, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
-    glTextureParameteri(pixel_texture, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
-    glTextureParameteri(pixel_texture, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTextureParameteri(pixel_texture, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-    glTextureStorage2D(pixel_texture, 1, GL_RGBA8, windowWidth, windowHeight);
-
-    glCreateFramebuffers(1, &pixel_draw_fbo);
-    glNamedFramebufferTexture(pixel_draw_fbo, GL_COLOR_ATTACHMENT0, pixel_texture, 0);
-
-    glBindFramebuffer(GL_FRAMEBUFFER, pixel_draw_fbo);
-    glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    currently_binded_fbo = 0;
 }
 
 bool ProjectApplication::Load()
@@ -69,11 +94,14 @@ bool ProjectApplication::Load()
         return false;
     }
 
-
-
     current_brush_length = starting_brush_length;
 
-    CreateBuffers();
+    draw_framebuffer = std::make_unique<DrawFrameBuffer>(windowWidth, windowHeight);
+    draw_canvas = std::make_unique<Canvas>(windowWidth, windowHeight);
+    
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    currently_binded_fbo = 0;
+
     BuildSceneOneCommands();
     return true;
 }
@@ -104,24 +132,35 @@ void ProjectApplication::ClearFBO(uint32_t fbo, glm::vec4 color)
     }
 }
 
+
 void ProjectApplication::DrawPixelsToScreen()
 {
-    glBlitNamedFramebuffer(pixel_draw_fbo, screen_draw_fbo, 0, 0, windowWidth, windowHeight, 0, 0, windowWidth, windowHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+    glBlitNamedFramebuffer(draw_framebuffer.get()->fbo_id, screen_draw_fbo, 0, 0, draw_framebuffer.get()->width, draw_framebuffer.get()->height, 0, 0, windowWidth, windowHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+}
+
+void Canvas::DrawPixel(int32_t x, int32_t y, glm::vec4 color)
+{
+    static int32_t x_offset = width / 2;
+    static int32_t y_offset = height / 2;
+
+    x = x + x_offset;
+    y = y + y_offset;
+
+    //Bounds check. Simply don't draw if out of bounds
+    if (x < 0 || y  < 0)
+        return;
+
+    if (x >= width || y >= height)
+        return;
+
+    canvas_color_buffer[static_cast<size_t>(y) * static_cast<size_t>(width) + x] = color;
 }
 
 void ProjectApplication::DrawPixel(int32_t x, int32_t y, glm::vec4 color, int32_t x_offset, int32_t y_offset)
 {
-    //Bounds check. Simply don't draw if out of bounds
-    if (x + x_offset < 0 || y + y_offset < 0)
-        return;
-
-    if (x + x_offset > windowWidth || y + y_offset > windowHeight)
-        return;
-
-    glTextureSubImage2D(pixel_texture, 0, x + x_offset, y + y_offset, 1, 1, GL_RGBA, GL_FLOAT, glm::value_ptr(color));
+    //To Do: can have this call a function pointer to the current DrawPixel function
+    draw_framebuffer.get()->DrawPixel(x, y, color, x_offset, y_offset);
 }
-
-
 
 void ProjectApplication::DrawPixelLineNaive(int32_t x_start, int32_t y_start, int32_t x_end, int32_t y_end, glm::vec4 color)
 {
@@ -222,12 +261,27 @@ void ProjectApplication::DrawFilledSquare(glm::i32vec2 center, glm::vec4 color, 
     }
 }
 
+void ProjectApplication::DrawFilledSquareCanvas(glm::i32vec2 center, glm::vec4 color, int32_t length)
+{
+    //Start from the top right possible
+    glm::i32vec2 bottom_left = center - glm::i32vec2(length / 2, length / 2);
+
+    //Draw row by row from the top left
+    for (int32_t y = bottom_left.y; y < bottom_left.y + length; y += 1)
+    {
+        for (int32_t x = bottom_left.x; x < bottom_left.x + length; x += 1)
+        {
+            draw_canvas.get()->DrawPixel(x, y, color);
+        }   
+    }
+}
+
 void ProjectApplication::RenderScene([[maybe_unused]] double dt)
 {
     //RenderSceneOne();
-    //RenderSceneTwo();
-
-    RenderSceneThree(dt);
+    RenderSceneTwo();
+    //FillScreenBenchmarks();
+    //RenderSceneThree(dt);
 }
 
 
@@ -255,13 +309,14 @@ void ProjectApplication::BuildSceneOneCommands()
 
 }
 
+
 void ProjectApplication::RenderSceneOne()
 {
     ClearFBO(screen_draw_fbo, clear_screen_color);
 
     if (is_screen_dirty)
     {
-        ClearFBO(pixel_draw_fbo, pixel_clear_screen_color);
+        ClearFBO(draw_framebuffer.get()->fbo_id, draw_framebuffer.get()->clear_color);
 
         while (!renderCommandQueue.empty())
         {
@@ -270,6 +325,7 @@ void ProjectApplication::RenderSceneOne()
         }
 
         is_screen_dirty = false;
+        //DrawCanvasToFBO();
     }
 
     DrawPixelsToScreen();
@@ -291,8 +347,7 @@ void ProjectApplication::RenderSceneTwo()
                 self->BrushControlCallback(xoffset, yoffset);
             });
 
-
-        ClearFBO(pixel_draw_fbo, pixel_clear_screen_color);
+        ClearFBO(draw_framebuffer.get()->fbo_id, draw_framebuffer.get()->clear_color);
         firstRun = false;
     }
 
@@ -309,14 +364,11 @@ void ProjectApplication::RenderSceneTwo()
 
         mouseY = windowHeight - mouseY;
         DrawFilledSquare(glm::i32vec2(static_cast<int32_t>(mouseX), static_cast<int32_t>(mouseY)), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f), current_brush_length);
-        //DrawPixel(static_cast<int32_t>(mouseX), static_cast<int32_t>(mouseY), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f));
-
-        DrawPixelsToScreen();
 
     }
     else if (IsMouseKeyPressed(GLFW_MOUSE_BUTTON_2))
     {
-        ClearFBO(pixel_draw_fbo, pixel_clear_screen_color);
+        ClearFBO(draw_framebuffer.get()->fbo_id, draw_framebuffer.get()->clear_color);
     }
     else
     {
@@ -333,6 +385,61 @@ void ProjectApplication::RenderSceneTwo()
     DrawPixelsToScreen();
 }
 
+void ProjectApplication::FillScreenBenchmarks()
+{
+    ClearFBO(screen_draw_fbo, clear_screen_color);
+    ClearFBO(draw_framebuffer.get()->fbo_id, draw_framebuffer.get()->clear_color);
+    static bool is_first_draw = true;
+    if (is_first_draw)
+    {
+        static glm::vec4 clear_color{1.0f, 1.0f, 1.0f, 1.0f};
+        {
+            Timer timer;
+            static int32_t canvas_width = (draw_canvas.get()->width);
+            static int32_t canvas_height = (draw_canvas.get()->height);
+
+
+            for (int32_t x = -canvas_width / 2; x < canvas_width / 2; x += 1)
+            {
+                for (int32_t y = -canvas_height / 2; y < canvas_height / 2; y += 1)
+                {
+                    DrawPixelCentreOrigin(x, y, clear_color);
+
+                    //draw_framebuffer->DrawPixel(x, y, default_draw_color, windowWidth_half, windowHeight_half);
+                    //draw_canvas->DrawPixel(x, y, default_draw_color);
+                    //draw_canvas->DrawPixel(x, y, TraceRay(origin, ray, spheres));
+                }
+            }
+            //DrawPixelsToScreen();
+
+            auto ms = timer.Elapsed_us() / 1000;
+            std::cout << "Drawing directly FBO texture took: " << ms << " ms\n";
+        }
+
+        {
+            Timer timer;
+            static int32_t canvas_width = (draw_canvas.get()->width);
+            static int32_t canvas_height = (draw_canvas.get()->height);
+
+            for (int32_t x = -canvas_width / 2; x < canvas_width / 2; x += 1)
+            {
+                for (int32_t y = -canvas_height / 2; y < canvas_height / 2; y += 1)
+                {
+                    draw_canvas->DrawPixel(x, y, clear_color);
+                }
+            }
+
+           /* draw_canvas->DrawCanvasToFBO(*draw_framebuffer);
+            DrawPixelsToScreen();*/
+
+            auto ms = timer.Elapsed_us() / 1000;
+            std::cout << "Drawing to canvas buffer took: " << ms << " ms\n";
+        }
+        is_first_draw = false;
+    }
+    DrawPixelsToScreen();
+}
+
 
 void ProjectApplication::RenderSceneThree([[maybe_unused]] double dt)
 {
@@ -345,13 +452,13 @@ void ProjectApplication::RenderSceneThree([[maybe_unused]] double dt)
     {
         Timer timer;
 
-        ClearFBO(pixel_draw_fbo, pixel_clear_screen_color);
+        ClearFBO(draw_framebuffer.get()->fbo_id, draw_framebuffer.get()->clear_color);
 
         //Origin
         static glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 0.0f);
         
-        static int32_t canvas_width = (windowWidth);
-        static int32_t canvas_height = (windowHeight);
+        static int32_t canvas_width = (draw_canvas.get()->width);
+        static int32_t canvas_height = (draw_canvas.get()->height);
         
         static float viewport_width = 1.0f;
         static float viewport_height = 1.0f;
@@ -444,7 +551,12 @@ void ProjectApplication::RenderSceneThree([[maybe_unused]] double dt)
             for (int32_t y = -canvas_height / 2; y < canvas_height / 2; y += 1)
             {
                 glm::vec3 ray = convert_canvas_to_viewport(x, y);
-                DrawPixelCentreOrigin(x, y, TraceRay(origin, ray, spheres));
+
+                DrawPixelCentreOrigin(x, y, default_draw_color);
+
+                //draw_framebuffer->DrawPixel(x, y, default_draw_color, windowWidth_half, windowHeight_half);
+                //draw_canvas->DrawPixel(x, y, default_draw_color);
+                //draw_canvas->DrawPixel(x, y, TraceRay(origin, ray, spheres));
             }
         }
         is_first_draw = false;
@@ -452,6 +564,7 @@ void ProjectApplication::RenderSceneThree([[maybe_unused]] double dt)
         auto ms = timer.Elapsed_us() / 1000;
         std::cout << "Drawing spheres took " << ms << " ms\n";
 
+        //draw_canvas->DrawCanvasToFBO(*draw_framebuffer);
     }
     DrawPixelsToScreen();
 }
