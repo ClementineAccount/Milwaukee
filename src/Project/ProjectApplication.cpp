@@ -104,17 +104,21 @@ bool ProjectApplication::Load()
 
     current_brush_length = starting_brush_length;
 
-    size_t draw_framebuffer_width = windowWidth / 3;
-    size_t draw_framebuffer_height = windowHeight / 3;
+    size_t draw_framebuffer_width_scale_inverse = 3;
+    size_t draw_framebuffer_height_inverse = 3;
+
+    size_t draw_framebuffer_width = windowWidth / draw_framebuffer_width_scale_inverse;
+    size_t draw_framebuffer_height = windowHeight / draw_framebuffer_height_inverse;
 
     draw_framebuffer = std::make_unique<DrawFrameBuffer>(draw_framebuffer_width, draw_framebuffer_height);
 
     size_t canvas_width_scale_inverse = 3;
-    size_t canvas_width_height_ivnerse = 3;
+    size_t canvas_height_inverse = 3;
 
     size_t canvas_width = draw_framebuffer_width / canvas_width_scale_inverse;
-    size_t canvas_height = draw_framebuffer_height / canvas_width_height_ivnerse;
+    size_t canvas_height = draw_framebuffer_height / canvas_height_inverse;
 
+    //half as we center the origin in middle of canvas
     size_t canvas_origin_x = draw_framebuffer_width / 2 -  canvas_width / 2;
     size_t canvas_origin_y = draw_framebuffer_height / 2 - canvas_height / 2;
 
