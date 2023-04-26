@@ -888,7 +888,7 @@ void ProjectApplication::RenderUI([[maybe_unused]] double dt)
     {
         ImGui::Text("Framerate: %.0f Hertz", 1 / dt);
         ImGui::Text("Elapsed Real Time in Seconds (Footage may be sped up): %.3f", elapsed_time_seconds);
-        ImGui::Text("Current Brush Length: %d", current_brush_length);
+        //ImGui::Text("Current Brush Length: %d", current_brush_length);
         ImGui::End();
     }
 }
