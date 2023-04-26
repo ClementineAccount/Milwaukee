@@ -25,23 +25,32 @@
 #include <iostream>
 
 
-Canvas::Canvas(int32_t width, int32_t height)
+Canvas::Canvas(int32_t width, int32_t height, int32_t origin_x, int32_t origin_y)
 {
     this->width = width;
     this->height = height;
+    this->origin_x = origin_x;
+    this->origin_y = origin_y;
 
     canvas_color_buffer.resize(static_cast<size_t>(width) * static_cast<size_t>(height));
     ClearCanvas();
 }
 
-void Canvas::ClearCanvas()
+void Canvas::ClearCanvas(glm::vec4 color)
 {
-    std::fill(canvas_color_buffer.begin(), canvas_color_buffer.end(), clear_color);
+    std::fill(canvas_color_buffer.begin(), canvas_color_buffer.end(), color);
 }
 
 void Canvas::DrawCanvasToFBO(DrawFrameBuffer& FBO) const
 {
-    glTextureSubImage2D(FBO.tex_id, 0, 0, 0, FBO.width, FBO.height, GL_RGBA, GL_FLOAT, canvas_color_buffer.data());
+    assert(FBO.width >= this->width && FBO.height >= this->height);
+    assert(origin_x >= 0 && origin_x < FBO.width && origin_y >= 0 && origin_y < FBO.height);
+
+
+    //Possible for canvas to be smaller than the fbo
+    //glTextureSubImage2D(FBO.tex_id, 0, origin_x, origin_y, this->width, this->height, GL_RGBA, GL_FLOAT, canvas_color_buffer.data());
+
+
 }
 
 DrawFrameBuffer::DrawFrameBuffer(int32_t width, int32_t height)
@@ -97,7 +106,14 @@ bool ProjectApplication::Load()
     current_brush_length = starting_brush_length;
 
     draw_framebuffer = std::make_unique<DrawFrameBuffer>(windowWidth, windowHeight);
-    draw_canvas = std::make_unique<Canvas>(windowWidth, windowHeight);
+
+    size_t canvas_width_scale_inverse = 1;
+    size_t canvas_width_height_ivnerse = 1;
+
+    size_t canvas_width = windowWidth / canvas_width_scale_inverse;
+    size_t canvas_height = windowHeight / canvas_width_height_ivnerse;
+
+    draw_canvas = std::make_unique<Canvas>(canvas_width, canvas_height, (windowWidth / 2) - (canvas_width / 2), (windowHeight / 2) - (canvas_height / 2));
     
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     currently_binded_fbo = 0;
@@ -279,9 +295,13 @@ void ProjectApplication::DrawFilledSquareCanvas(glm::i32vec2 center, glm::vec4 c
 void ProjectApplication::RenderScene([[maybe_unused]] double dt)
 {
     //RenderSceneOne();
-    RenderSceneTwo();
+    //RenderSceneTwo();
     //FillScreenBenchmarks();
-    //RenderSceneThree(dt);
+    //RenderSceneThree();
+
+    RenderSpheresDelay(dt);
+
+    elapsed_time_seconds += dt;
 }
 
 
@@ -305,8 +325,6 @@ void ProjectApplication::BuildSceneOneCommands()
 
     renderCommandQueue.push(DrawLineCommand(glm::ivec2(-1 * square_size, -1 * square_size), glm::ivec2(1 * square_size, 1 * square_size), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)));
     renderCommandQueue.push(DrawLineCommand(glm::ivec2(1 * square_size, -1 * square_size), glm::ivec2(-1 * square_size, 1 * square_size), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)));
-
-
 }
 
 
@@ -441,8 +459,10 @@ void ProjectApplication::FillScreenBenchmarks()
 }
 
 
-void ProjectApplication::RenderSceneThree([[maybe_unused]] double dt)
+void ProjectApplication::RenderSceneThree()
 {
+
+
     ClearFBO(screen_draw_fbo, clear_screen_color);
 
     //Prototyping just drawing in one pass and storing that first
@@ -552,11 +572,11 @@ void ProjectApplication::RenderSceneThree([[maybe_unused]] double dt)
             {
                 glm::vec3 ray = convert_canvas_to_viewport(x, y);
 
-                DrawPixelCentreOrigin(x, y, default_draw_color);
+                //DrawPixelCentreOrigin(x, y, default_draw_color);
 
                 //draw_framebuffer->DrawPixel(x, y, default_draw_color, windowWidth_half, windowHeight_half);
                 //draw_canvas->DrawPixel(x, y, default_draw_color);
-                //draw_canvas->DrawPixel(x, y, TraceRay(origin, ray, spheres));
+                draw_canvas->DrawPixel(x, y, TraceRay(origin, ray, spheres));
             }
         }
         is_first_draw = false;
@@ -564,8 +584,160 @@ void ProjectApplication::RenderSceneThree([[maybe_unused]] double dt)
         auto ms = timer.Elapsed_us() / 1000;
         std::cout << "Drawing spheres took " << ms << " ms\n";
 
-        //draw_canvas->DrawCanvasToFBO(*draw_framebuffer);
+        draw_canvas->DrawCanvasToFBO(*draw_framebuffer);
     }
+    DrawPixelsToScreen();
+}
+
+void ProjectApplication::RenderSpheresDelay(double dt)
+{
+
+    static glm::vec4 default_draw_color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+
+    ClearFBO(screen_draw_fbo, clear_screen_color);
+    static bool is_first_frame = true;
+    if (is_first_frame)
+    {
+        draw_canvas->ClearCanvas(default_draw_color);
+        ClearFBO(draw_framebuffer.get()->fbo_id, clear_screen_color);
+        is_first_frame = false;
+    }
+
+    //Origin
+    static glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 0.0f);
+    static int32_t canvas_width = (draw_canvas.get()->width);
+    static int32_t canvas_height = (draw_canvas.get()->height);
+    static float viewport_width = 1.0f;
+    static float viewport_height = 1.0f;
+    static float distance_to_viewport = 1.0f;
+    static float inf = std::numeric_limits<float>::max();
+    static float t_min = distance_to_viewport;
+    static float t_max = inf;
+
+    
+    auto convert_canvas_to_viewport = [&](int32_t x, int32_t y)
+    {
+        return glm::vec3(
+            static_cast<float>(x) * (viewport_width / static_cast<float>(canvas_width)), 
+            static_cast<float>(y) * (viewport_height / static_cast<float>(canvas_height)),
+            distance_to_viewport);
+    };
+
+    struct Sphere 
+    {
+        glm::vec3 center;
+        glm::vec3 color;
+        float radius;
+    };
+
+
+
+    auto intersect_ray_sphere = [&](glm::vec3 origin, glm::vec3 ray, glm::vec3 sphere_center, float radius)
+    {
+        glm::vec3 CO = origin - sphere_center;
+
+        //solving with quadratic formula
+        float a = glm::dot(ray, ray);
+        float b = 2 * glm::dot(CO, ray);
+        float c = glm::dot(CO, CO) - radius * radius;
+
+        float discrim = b * b - 4 * a * c;
+
+        //x = t1, y = t2
+        //Negative values are rejected
+        glm::vec2 t_pairs(inf, inf);
+
+        if (discrim < 0)
+        {
+            return t_pairs;
+        }
+
+        t_pairs.x = (-b + sqrt(discrim) / (2 * a));
+        t_pairs.y = (-b - sqrt(discrim) / (2 * a));
+        return t_pairs;
+    };
+
+    static Sphere sphere_green{glm::vec3(-2.0f, 0.0f, 4.0f), glm::vec3(0.0f, 1.0f, 0.0f), 1.0f};
+    static Sphere sphere_red{glm::vec3(0.0f, -1.0f, 3.0f), glm::vec3(1.0f, 0.0f, 0.0f), 1.0f};
+    static Sphere sphere_blue{glm::vec3(2.0f, 0.0f, 4.0f), glm::vec3(0.0f, 0.0f, 1.0f), 1.0f};
+
+    auto TraceRay = [&](glm::vec3 origin, glm::vec3 ray, std::vector<Sphere>const& sphere_list)
+    {
+        float closest_t = inf;
+        glm::vec4 draw_color = default_draw_color; //Background color
+
+        for (auto const& sphere : sphere_list)
+        {
+            glm::vec2 t_pairs = intersect_ray_sphere(origin, ray, sphere.center, sphere.radius);
+
+            auto update_closest = [&](float t_value)
+            {
+                if (t_value > t_min && t_value < t_max && t_value < closest_t)
+                {
+                    closest_t = t_value;
+                    draw_color = glm::vec4(sphere.color, 1.0f);
+                }
+            };
+
+            update_closest(t_pairs.x);
+            update_closest(t_pairs.y);
+        }
+        return draw_color;
+    };
+
+    glm::vec3 origin = glm::vec3(0.0f, 0.0f, 0.0f);
+    std::vector<Sphere> spheres{sphere_red, sphere_green, sphere_blue};
+
+    static int curr_x = -canvas_width / 2;
+    static int curr_y = -canvas_height / 2;
+
+    static float time_between_draw = 0.0f;
+    static float elapsed_draw_time = 0.0f;
+
+
+    static int num_rays_per_frame = canvas_width;
+    int current_ray_count = 0;
+
+    elapsed_draw_time += dt;
+    if (elapsed_draw_time > time_between_draw)
+    {
+        elapsed_draw_time = 0.0f;
+        //if (curr_x < (canvas_width / 2))
+        //{
+        //    if (curr_y < canvas_height / 2)
+        //    {
+        //        glm::vec3 ray = convert_canvas_to_viewport(curr_x, curr_y);
+        //        DrawPixelCentreOrigin(curr_x, curr_y, TraceRay(origin, ray, spheres));
+        //        curr_y += 1;
+        //    }
+        //    else
+        //    {
+        //        curr_y = -canvas_height / 2;
+        //        curr_x += 1;
+        //    }
+        //}
+
+        while (current_ray_count < num_rays_per_frame)
+        {
+            current_ray_count += 1;
+            if (curr_y < (canvas_height / 2))
+            {
+                if (curr_x < canvas_width / 2)
+                {
+                    glm::vec3 ray = convert_canvas_to_viewport(curr_x, curr_y);
+                    DrawPixelCentreOrigin(curr_x, curr_y, TraceRay(origin, ray, spheres));
+                    //draw_canvas->DrawPixel(curr_x, curr_y, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
+                    curr_x += 1;
+                }
+                else
+                {
+                    curr_x = -canvas_width / 2;
+                    curr_y += 1;
+                }
+            }
+        }
+    }
+    //draw_canvas->DrawCanvasToFBO(*draw_framebuffer);
     DrawPixelsToScreen();
 }
 
@@ -576,6 +748,7 @@ void ProjectApplication::RenderUI([[maybe_unused]] double dt)
     ImGui::Begin("Performance");
     {
         ImGui::Text("Framerate: %.0f Hertz", 1 / dt);
+        ImGui::Text("Elapsed Real Time in Seconds (Footage may be sped up): %.3f", elapsed_time_seconds);
         ImGui::Text("Current Brush Length: %d", current_brush_length);
         ImGui::End();
     }

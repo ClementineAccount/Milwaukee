@@ -65,18 +65,24 @@ class Canvas
 {
 public:
     Canvas() = delete;
-    Canvas(int32_t width, int32_t height);
+    Canvas(int32_t width, int32_t height, int32_t origin_x = 0, int32_t origin_y = 0);
 
-
-    void DrawPixel(int32_t x, int32_t y, glm::vec4 color);
-    void ClearCanvas();
-    void DrawCanvasToFBO(DrawFrameBuffer& FBO) const;
 
     int32_t width;
     int32_t height;
 
+    int32_t origin_x = 0;
+    int32_t origin_y = 0;
+
+    static constexpr glm::vec4 default_clear_color{0.2f, 0.2f, 0.2f, 1.0f};
     glm::vec4 clear_color{0.2f, 0.2f, 0.2f, 1.0f};
     std::vector<glm::vec4> canvas_color_buffer;
+
+
+
+    void DrawPixel(int32_t x, int32_t y, glm::vec4 color);
+    void ClearCanvas(glm::vec4 color = default_clear_color);
+    void DrawCanvasToFBO(DrawFrameBuffer& FBO) const;
 };
 
 
@@ -119,7 +125,10 @@ private:
     void FillScreenBenchmarks();
 
     //Simple sphere projection with rays
-    void RenderSceneThree(double dt);
+    void RenderSceneThree();
+
+    void RenderSpheresDelay(double dt);
+
 
     void BrushControlCallback(double xoffset, double yoffset);
 
@@ -132,7 +141,7 @@ private:
     std::queue<std::function<void()>> renderCommandQueue;
 
     //for the default framebuffer
-    glm::vec4 clear_screen_color{0.0f, 1.0f, 0.0f, 1.0f};
+    glm::vec4 clear_screen_color{0.2f, 0.2f, 0.2f, 1.0f};
 
     uint32_t currently_binded_fbo;
 
@@ -146,4 +155,10 @@ private:
 
     std::unique_ptr<DrawFrameBuffer> draw_framebuffer;
     std::unique_ptr<Canvas> draw_canvas;
+
+
+    double elapsed_time_seconds = 0.0f;
+
+
+
 };

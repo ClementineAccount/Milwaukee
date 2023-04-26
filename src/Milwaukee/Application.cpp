@@ -142,7 +142,7 @@ bool Application::Load()
     }, nullptr);
     glClearColor(0.05f, 0.02f, 0.07f, 1.0f);
     glDisable(GL_FRAMEBUFFER_SRGB);
-    glfwSwapInterval(1);
+    glfwSwapInterval(0);
 
     return true;
 }
