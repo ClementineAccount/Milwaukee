@@ -129,6 +129,7 @@ private:
 
     void RenderSpheresDelay(double dt);
 
+    void RenderSpheresRealTime(double dt);
 
     void BrushControlCallback(double xoffset, double yoffset);
 

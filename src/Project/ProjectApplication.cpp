@@ -48,10 +48,9 @@ void Canvas::DrawCanvasToFBO(DrawFrameBuffer& FBO) const
 
 
     //Possible for canvas to be smaller than the fbo
-    //glTextureSubImage2D(FBO.tex_id, 0, origin_x, origin_y, this->width, this->height, GL_RGBA, GL_FLOAT, canvas_color_buffer.data());
-
-
+    glTextureSubImage2D(FBO.tex_id, 0, origin_x, origin_y, this->width, this->height, GL_RGBA, GL_FLOAT, canvas_color_buffer.data());
 }
+
 
 DrawFrameBuffer::DrawFrameBuffer(int32_t width, int32_t height)
 {
@@ -105,15 +104,21 @@ bool ProjectApplication::Load()
 
     current_brush_length = starting_brush_length;
 
-    draw_framebuffer = std::make_unique<DrawFrameBuffer>(windowWidth, windowHeight);
+    size_t draw_framebuffer_width = windowWidth / 1;
+    size_t draw_framebuffer_height = windowHeight / 1;
+
+    draw_framebuffer = std::make_unique<DrawFrameBuffer>(draw_framebuffer_width, draw_framebuffer_height);
 
     size_t canvas_width_scale_inverse = 1;
     size_t canvas_width_height_ivnerse = 1;
 
-    size_t canvas_width = windowWidth / canvas_width_scale_inverse;
-    size_t canvas_height = windowHeight / canvas_width_height_ivnerse;
+    size_t canvas_width = draw_framebuffer_width / canvas_width_scale_inverse;
+    size_t canvas_height = draw_framebuffer_height / canvas_width_height_ivnerse;
 
-    draw_canvas = std::make_unique<Canvas>(canvas_width, canvas_height, (windowWidth / 2) - (canvas_width / 2), (windowHeight / 2) - (canvas_height / 2));
+    size_t canvas_origin_x = draw_framebuffer_width / 2 -  canvas_width / 2;
+    size_t canvas_origin_y = draw_framebuffer_height / 2 - canvas_height / 2;
+
+    draw_canvas = std::make_unique<Canvas>(canvas_width, canvas_height, canvas_origin_x, canvas_origin_y);
     
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     currently_binded_fbo = 0;
@@ -151,7 +156,8 @@ void ProjectApplication::ClearFBO(uint32_t fbo, glm::vec4 color)
 
 void ProjectApplication::DrawPixelsToScreen()
 {
-    glBlitNamedFramebuffer(draw_framebuffer.get()->fbo_id, screen_draw_fbo, 0, 0, draw_framebuffer.get()->width, draw_framebuffer.get()->height, 0, 0, windowWidth, windowHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+
+    glBlitNamedFramebuffer(draw_framebuffer.get()->fbo_id, screen_draw_fbo, 0, 0, draw_framebuffer.get()->width, draw_framebuffer.get()->height, 0, 0, windowWidth, windowHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 }
 
 void Canvas::DrawPixel(int32_t x, int32_t y, glm::vec4 color)
@@ -299,7 +305,8 @@ void ProjectApplication::RenderScene([[maybe_unused]] double dt)
     //FillScreenBenchmarks();
     //RenderSceneThree();
 
-    RenderSpheresDelay(dt);
+    //RenderSpheresDelay(dt);
+    RenderSpheresRealTime(dt);
 
     elapsed_time_seconds += dt;
 }
@@ -461,8 +468,6 @@ void ProjectApplication::FillScreenBenchmarks()
 
 void ProjectApplication::RenderSceneThree()
 {
-
-
     ClearFBO(screen_draw_fbo, clear_screen_color);
 
     //Prototyping just drawing in one pass and storing that first
@@ -738,6 +743,140 @@ void ProjectApplication::RenderSpheresDelay(double dt)
         }
     }
     //draw_canvas->DrawCanvasToFBO(*draw_framebuffer);
+    DrawPixelsToScreen();
+}
+
+
+void ProjectApplication::RenderSpheresRealTime(double dt)
+{
+    static glm::vec4 default_draw_color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+
+    ClearFBO(screen_draw_fbo, clear_screen_color);
+    static bool is_first_frame = true;
+    if (is_first_frame)
+    {
+        draw_canvas->ClearCanvas(default_draw_color);
+        ClearFBO(draw_framebuffer.get()->fbo_id, clear_screen_color);
+        is_first_frame = false;
+    }
+
+    //Origin
+    static glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 0.0f);
+    static int32_t canvas_width = (draw_canvas.get()->width);
+    static int32_t canvas_height = (draw_canvas.get()->height);
+    static float viewport_width = 1.0f;
+    static float viewport_height = 1.0f;
+    static float distance_to_viewport = 1.0f;
+    static float inf = std::numeric_limits<float>::max();
+    static float t_min = distance_to_viewport;
+    static float t_max = inf;
+
+
+    auto convert_canvas_to_viewport = [&](int32_t x, int32_t y)
+    {
+        return glm::vec3(
+            static_cast<float>(x) * (viewport_width / static_cast<float>(canvas_width)), 
+            static_cast<float>(y) * (viewport_height / static_cast<float>(canvas_height)),
+            distance_to_viewport);
+    };
+
+    struct Sphere 
+    {
+        glm::vec3 center;
+        glm::vec3 color;
+        float radius;
+    };
+
+
+    auto intersect_ray_sphere = [&](glm::vec3 origin, glm::vec3 ray, glm::vec3 sphere_center, float radius)
+    {
+        glm::vec3 CO = origin - sphere_center;
+
+        //solving with quadratic formula
+        float a = glm::dot(ray, ray);
+        float b = 2 * glm::dot(CO, ray);
+        float c = glm::dot(CO, CO) - radius * radius;
+
+        float discrim = b * b - 4 * a * c;
+
+        //x = t1, y = t2
+        //Negative values are rejected
+        glm::vec2 t_pairs(inf, inf);
+
+        if (discrim < 0)
+        {
+            return t_pairs;
+        }
+
+        t_pairs.x = (-b + sqrt(discrim) / (2 * a));
+        t_pairs.y = (-b - sqrt(discrim) / (2 * a));
+        return t_pairs;
+    };
+
+
+    static glm::vec3 red_sphere_center = glm::vec3(0.0f, -1.0f, 3.0f);
+    red_sphere_center.y += 0.01f * dt;
+
+    static glm::vec3 blue_sphere_center = glm::vec3(2.0f, 0.0f, 4.0f);
+    blue_sphere_center.x -= 0.01f * dt;
+
+    Sphere sphere_green{glm::vec3(-2.0f, 0.0f, 4.0f), glm::vec3(0.0f, 1.0f, 0.0f), 1.0f};
+    Sphere sphere_red{red_sphere_center, glm::vec3(1.0f, 0.0f, 0.0f), 1.0f};
+    Sphere sphere_blue{blue_sphere_center, glm::vec3(0.0f, 0.0f, 1.0f), 1.0f};
+
+    auto TraceRay = [&](glm::vec3 origin, glm::vec3 ray, std::vector<Sphere>const& sphere_list)
+    {
+        float closest_t = inf;
+        glm::vec4 draw_color = default_draw_color; //Background color
+
+        for (auto const& sphere : sphere_list)
+        {
+            glm::vec2 t_pairs = intersect_ray_sphere(origin, ray, sphere.center, sphere.radius);
+
+            auto update_closest = [&](float t_value)
+            {
+                if (t_value > t_min && t_value < t_max && t_value < closest_t)
+                {
+                    closest_t = t_value;
+                    draw_color = glm::vec4(sphere.color, 1.0f);
+                }
+            };
+
+            update_closest(t_pairs.x);
+            update_closest(t_pairs.y);
+        }
+        return draw_color;
+    };
+
+    glm::vec3 origin = glm::vec3(0.0f, 0.0f, 0.0f);
+    std::vector<Sphere> spheres{sphere_red, sphere_green, sphere_blue};
+
+    static int curr_x = -canvas_width / 2;
+    static int curr_y = -canvas_height / 2;
+
+    static float time_between_draw = 0.0f;
+    static float elapsed_draw_time = 0.0f;
+
+
+    static int num_rays_per_frame = canvas_width;
+    int current_ray_count = 0;
+
+    elapsed_draw_time += dt;
+    if (elapsed_draw_time > time_between_draw)
+    {
+        elapsed_draw_time = 0.0f;
+        for (int32_t x = -canvas_width / 2; x < canvas_width / 2; x += 1)
+        {
+            for (int32_t y = -canvas_height / 2; y < canvas_height / 2; y += 1)
+            {
+                glm::vec3 ray = convert_canvas_to_viewport(x, y);
+                draw_canvas->DrawPixel(x, y, TraceRay(origin, ray, spheres));
+            }
+        }
+    }
+
+
+    draw_canvas->DrawCanvasToFBO(*draw_framebuffer);
     DrawPixelsToScreen();
 }
 
