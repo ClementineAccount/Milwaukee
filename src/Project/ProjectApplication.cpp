@@ -104,13 +104,13 @@ bool ProjectApplication::Load()
 
     current_brush_length = starting_brush_length;
 
-    size_t draw_framebuffer_width = windowWidth / 1;
-    size_t draw_framebuffer_height = windowHeight / 1;
+    size_t draw_framebuffer_width = windowWidth / 2;
+    size_t draw_framebuffer_height = windowHeight / 2;
 
     draw_framebuffer = std::make_unique<DrawFrameBuffer>(draw_framebuffer_width, draw_framebuffer_height);
 
-    size_t canvas_width_scale_inverse = 1;
-    size_t canvas_width_height_ivnerse = 1;
+    size_t canvas_width_scale_inverse = 4;
+    size_t canvas_width_height_ivnerse = 4;
 
     size_t canvas_width = draw_framebuffer_width / canvas_width_scale_inverse;
     size_t canvas_height = draw_framebuffer_height / canvas_width_height_ivnerse;
@@ -815,12 +815,12 @@ void ProjectApplication::RenderSpheresRealTime(double dt)
 
 
     static glm::vec3 red_sphere_center = glm::vec3(0.0f, -1.0f, 3.0f);
-    red_sphere_center.y += 0.01f * dt;
+    red_sphere_center.y += 0.1f * dt;
 
     static glm::vec3 blue_sphere_center = glm::vec3(2.0f, 0.0f, 4.0f);
-    blue_sphere_center.x -= 0.01f * dt;
+    blue_sphere_center.x -= 0.1f * dt;
 
-    Sphere sphere_green{glm::vec3(-2.0f, 0.0f, 4.0f), glm::vec3(0.0f, 1.0f, 0.0f), 1.0f};
+    Sphere sphere_green{glm::vec3(-2.0f, 0.0f, 3.0f), glm::vec3(0.0f, 1.0f, 0.0f), 1.0f};
     Sphere sphere_red{red_sphere_center, glm::vec3(1.0f, 0.0f, 0.0f), 1.0f};
     Sphere sphere_blue{blue_sphere_center, glm::vec3(0.0f, 0.0f, 1.0f), 1.0f};
 
