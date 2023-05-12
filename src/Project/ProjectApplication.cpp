@@ -753,7 +753,7 @@ void ProjectApplication::RenderSpheresDelay(double dt)
 
 void ProjectApplication::RenderSpheresRealTime(double dt)
 {
-    static glm::vec4 default_draw_color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+    static glm::vec4 default_draw_color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
 
     ClearFBO(screen_draw_fbo, clear_screen_color);
     static bool is_first_frame = true;
@@ -775,6 +775,25 @@ void ProjectApplication::RenderSpheresRealTime(double dt)
     static float t_min = distance_to_viewport;
     static float t_max = inf;
 
+    static glm::vec3 green_sphere_position = glm::vec3(-2.0f, 0.0f, 3.0f);
+
+    if (IsKeyPressed(GLFW_KEY_D))
+    {
+        green_sphere_position.x += 1.0f * dt;
+    }
+    else if (IsKeyPressed(GLFW_KEY_A))
+    {
+        green_sphere_position.x -= 1.0f * dt;
+    }
+
+    if (IsKeyPressed(GLFW_KEY_W))
+    {
+        green_sphere_position.y += 1.0f * dt;
+    }
+    else if (IsKeyPressed(GLFW_KEY_S))
+    {
+        green_sphere_position.y -= 1.0f * dt;
+    }
 
     auto convert_canvas_to_viewport = [&](int32_t x, int32_t y)
     {
@@ -790,6 +809,19 @@ void ProjectApplication::RenderSpheresRealTime(double dt)
         glm::vec3 color;
         float radius;
     };
+
+    auto compute_lighting = [&](glm::vec3 point, glm::vec3 normal, Light light)
+    {
+        float intensity = 0.0f;
+        float n_dot_l = glm::dot(normal, light.direction);
+        if (n_dot_l > 0.0f)
+        {
+            intensity += light.intensity * n_dot_l /(glm::length(normal) * glm::length(light.direction));
+        }
+        return intensity;
+    };
+
+    Light directional_light;
 
 
     auto intersect_ray_sphere = [&](glm::vec3 origin, glm::vec3 ray, glm::vec3 sphere_center, float radius)
@@ -824,7 +856,7 @@ void ProjectApplication::RenderSpheresRealTime(double dt)
     static glm::vec3 blue_sphere_center = glm::vec3(2.0f, 0.0f, 4.0f);
     blue_sphere_center.x -= 1.0f * dt;
 
-    Sphere sphere_green{glm::vec3(-2.0f, 0.0f, 3.0f), glm::vec3(0.0f, 1.0f, 0.0f), 1.0f};
+    Sphere sphere_green{green_sphere_position, glm::vec3(0.0f, 1.0f, 0.0f), 1.0f};
     Sphere sphere_red{red_sphere_center, glm::vec3(1.0f, 0.0f, 0.0f), 1.0f};
     Sphere sphere_blue{blue_sphere_center, glm::vec3(0.0f, 0.0f, 1.0f), 1.0f};
 
@@ -833,23 +865,40 @@ void ProjectApplication::RenderSpheresRealTime(double dt)
         float closest_t = inf;
         glm::vec4 draw_color = default_draw_color; //Background color
 
-        for (auto const& sphere : sphere_list)
+        if (sphere_list.empty())
+            return default_draw_color;
+
+        size_t closest_sphere_index = 0;
+        for (size_t i = 0; i < sphere_list.size(); ++i)
         {
-            glm::vec2 t_pairs = intersect_ray_sphere(origin, ray, sphere.center, sphere.radius);
+            glm::vec2 t_pairs = intersect_ray_sphere(origin, ray, sphere_list[i].center, sphere_list[i].radius);
 
             auto update_closest = [&](float t_value)
             {
                 if (t_value > t_min && t_value < t_max && t_value < closest_t)
                 {
                     closest_t = t_value;
-                    draw_color = glm::vec4(sphere.color, 1.0f);
+                    closest_sphere_index = i;
+                    draw_color = glm::vec4(sphere_list[i].color, 1.0f);
                 }
             };
 
             update_closest(t_pairs.x);
             update_closest(t_pairs.y);
         }
-        return draw_color;
+        if (closest_t == inf)
+        {
+            return default_draw_color;
+        }
+
+        glm::vec3 P = origin + closest_t * ray;
+        glm::vec3 normal = P - sphere_list[closest_sphere_index].center;
+        normal = glm::normalize(normal);
+
+
+        return draw_color * compute_lighting(P, normal, directional_light);
+
+        //return draw_color;
     };
 
     glm::vec3 origin = glm::vec3(0.0f, 0.0f, 0.0f);

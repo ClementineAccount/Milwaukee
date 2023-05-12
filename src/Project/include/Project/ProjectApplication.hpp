@@ -85,6 +85,15 @@ public:
     void DrawCanvasToFBO(DrawFrameBuffer& FBO) const;
 };
 
+struct Light
+{
+    //Directional light by default
+public:
+    float intensity = 0.6f;
+    glm::vec3 direction = glm::vec3(1.0f, 4.0f, 4.0f);
+
+};
+
 
 class ProjectApplication final : public Application
 {
