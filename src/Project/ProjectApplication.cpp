@@ -46,9 +46,42 @@ void Canvas::DrawCanvasToFBO(DrawFrameBuffer& FBO) const
     assert(FBO.width >= this->width && FBO.height >= this->height);
     assert(origin_x >= 0 && origin_x < FBO.width && origin_y >= 0 && origin_y < FBO.height);
 
-
     //Possible for canvas to be smaller than the fbo
     glTextureSubImage2D(FBO.tex_id, 0, origin_x, origin_y, this->width, this->height, GL_RGBA, GL_FLOAT, canvas_color_buffer.data());
+}
+
+void Canvas::Resize(int32_t set_width, int32_t set_height)
+{
+    width = set_width;
+    height = set_height;
+
+    canvas_color_buffer.resize(static_cast<size_t>(width) * static_cast<size_t>(height));
+    ClearCanvas(default_clear_color);
+}
+
+void Canvas::SetOrigin(int32_t origin_x, int32_t origin_y)
+{
+    this->origin_x = origin_x;
+    this->origin_y = origin_y;
+}
+
+void DrawFrameBuffer::Resize(int32_t width, int32_t height)
+{
+    glDeleteTextures(1, &tex_id);
+    
+    this->width = width;
+    this->height = height;
+
+    glCreateTextures(GL_TEXTURE_2D, 1, &tex_id);
+
+    glTextureParameteri(tex_id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
+    glTextureParameteri(tex_id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+    glTextureParameteri(tex_id, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTextureParameteri(tex_id, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    glTextureStorage2D(tex_id, 1, GL_RGBA8, width, height);
+
+    glNamedFramebufferTexture(fbo_id, GL_COLOR_ATTACHMENT0, tex_id, 0);
 }
 
 
@@ -160,14 +193,13 @@ void ProjectApplication::ClearFBO(uint32_t fbo, glm::vec4 color)
 
 void ProjectApplication::DrawPixelsToScreen()
 {
-
     glBlitNamedFramebuffer(draw_framebuffer.get()->fbo_id, screen_draw_fbo, 0, 0, draw_framebuffer.get()->width, draw_framebuffer.get()->height, 0, 0, windowWidth, windowHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 }
 
 void Canvas::DrawPixel(int32_t x, int32_t y, glm::vec4 color)
 {
-    static int32_t x_offset = width / 2;
-    static int32_t y_offset = height / 2;
+    int32_t x_offset = width / 2;
+    int32_t y_offset = height / 2;
 
     x = x + x_offset;
     y = y + y_offset;
@@ -310,6 +342,10 @@ void ProjectApplication::RenderScene([[maybe_unused]] double dt)
     //RenderSceneThree();
 
     //RenderSpheresDelay(dt);
+
+    if (is_rendering_paused)
+        return;
+
     RenderSpheresRealTime(dt);
 
     elapsed_time_seconds += dt;
@@ -766,8 +802,8 @@ void ProjectApplication::RenderSpheresRealTime(double dt)
 
     //Origin
     static glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 0.0f);
-    static int32_t canvas_width = (draw_canvas.get()->width);
-    static int32_t canvas_height = (draw_canvas.get()->height);
+    int32_t canvas_width = (draw_canvas.get()->width);
+    int32_t canvas_height = (draw_canvas.get()->height);
     static float viewport_width = 1.0f;
     static float viewport_height = 1.0f;
     static float distance_to_viewport = 1.0f;
@@ -904,14 +940,14 @@ void ProjectApplication::RenderSpheresRealTime(double dt)
     glm::vec3 origin = glm::vec3(0.0f, 0.0f, 0.0f);
     std::vector<Sphere> spheres{sphere_red, sphere_green, sphere_blue};
 
-    static int curr_x = -canvas_width / 2;
-    static int curr_y = -canvas_height / 2;
+    int curr_x = -canvas_width / 2;
+    int curr_y = -canvas_height / 2;
 
     static float time_between_draw = 0.0f;
     static float elapsed_draw_time = 0.0f;
 
 
-    static int num_rays_per_frame = canvas_width;
+    int num_rays_per_frame = canvas_width;
     int current_ray_count = 0;
 
     elapsed_draw_time += dt;
@@ -941,7 +977,94 @@ void ProjectApplication::RenderUI([[maybe_unused]] double dt)
     {
         ImGui::Text("Framerate: %.0f Hertz", 1 / dt);
         ImGui::Text("Elapsed Real Time in Seconds (Footage may be sped up): %.3f", elapsed_time_seconds);
+        ImGui::Checkbox("Pause Rendering", &is_rendering_paused);
         //ImGui::Text("Current Brush Length: %d", current_brush_length);
+        ImGui::End();
+    }
+
+    ImGui::Begin("Canvas Settings");
+    {
+        ImGui::Text("Screen Resolution (Width, Height): %d %d", windowWidth, windowHeight);
+        ImGui::Text("DrawFBO Resolution (Width, Height): %d %d", draw_framebuffer.get()->width, draw_framebuffer.get()->height);
+        ImGui::Text("Canvas Resolution (Width, Height): %d %d", draw_canvas.get()->width, draw_canvas.get()->height);
+        ImGui::Text("Canvas Origin (x, y): %d %d", draw_canvas.get()->origin_x, draw_canvas.get()->origin_y);
+
+        static float set_fbo_resolution[2] = {draw_framebuffer.get()->width, draw_framebuffer.get()->height};
+        ImGui::DragFloat2("Set new DrawFBO Resolution (Width, Height)", &set_fbo_resolution[0]);
+        if (ImGui::Button("Resize DrawFBO"))
+        {
+            draw_framebuffer->Resize(set_fbo_resolution[0], set_fbo_resolution[1]);
+            static glm::vec4 default_draw_color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+            draw_canvas->ClearCanvas(default_draw_color);
+
+            ClearFBO(screen_draw_fbo, clear_screen_color);
+            ClearFBO(draw_framebuffer.get()->fbo_id, clear_screen_color);
+        }
+
+
+        static float set_canvas_resolution[2] = {draw_canvas.get()->width, draw_canvas.get()->height};
+        ImGui::DragFloat2("Set new Canvas Resolution (Width, Height)", &set_canvas_resolution[0]);
+        if (ImGui::Button("Resize Canvas"))
+        {
+            draw_canvas->Resize(set_canvas_resolution[0], set_canvas_resolution[1]);
+            static glm::vec4 default_draw_color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+            draw_canvas->ClearCanvas(default_draw_color);
+
+            ClearFBO(screen_draw_fbo, clear_screen_color);
+            ClearFBO(draw_framebuffer.get()->fbo_id, clear_screen_color);
+        }
+
+
+        if (ImGui::Button("Center Canvas"))
+        {
+            int32_t canvas_origin_x = draw_framebuffer.get()->width / 2 -  draw_canvas.get()->width / 2;
+            int32_t canvas_origin_y = draw_framebuffer.get()->height / 2 - draw_canvas.get()->height / 2;
+            draw_canvas->SetOrigin(canvas_origin_x, canvas_origin_y);
+
+            static glm::vec4 default_draw_color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+            draw_canvas->ClearCanvas(default_draw_color);
+
+            ClearFBO(screen_draw_fbo, clear_screen_color);
+            ClearFBO(draw_framebuffer.get()->fbo_id, clear_screen_color);
+        }
+
+        static float resize_percentage = 1.0f;
+        static float resize_percentage_canvas = 1.0f;
+        ImGui::DragFloat("Resize Percentage FBO of Window: ", &resize_percentage);
+        ImGui::DragFloat("Resize Percentage Canvas of FBO: ", &resize_percentage_canvas);
+
+        if (ImGui::Button("Resize by precent of window"))
+        {
+            float  draw_framebuffer_width_scale_inverse = resize_percentage;
+            float draw_framebuffer_height_inverse = resize_percentage;
+
+            size_t draw_framebuffer_width = windowWidth * draw_framebuffer_width_scale_inverse;
+            size_t draw_framebuffer_height = windowHeight * draw_framebuffer_height_inverse;
+
+            draw_framebuffer->Resize(draw_framebuffer_width, draw_framebuffer_height);
+
+            float canvas_width_scale_inverse = resize_percentage_canvas;
+            float canvas_height_inverse = resize_percentage_canvas;
+
+            size_t canvas_width = draw_framebuffer_width * canvas_width_scale_inverse;
+            size_t canvas_height = draw_framebuffer_height * canvas_height_inverse;
+
+            //half as we center the origin in middle of canvas
+            size_t canvas_origin_x = draw_framebuffer_width / 2 -  canvas_width / 2;
+            size_t canvas_origin_y = draw_framebuffer_height / 2 - canvas_height / 2;
+
+            draw_canvas->Resize(canvas_width, canvas_height);
+            draw_canvas->SetOrigin(canvas_origin_x, canvas_origin_y);
+
+            static glm::vec4 default_draw_color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+            draw_canvas->ClearCanvas(default_draw_color);
+
+            ClearFBO(screen_draw_fbo, clear_screen_color);
+            ClearFBO(draw_framebuffer.get()->fbo_id, clear_screen_color);
+        }
+
+
+
         ImGui::End();
     }
 }

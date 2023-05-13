@@ -51,6 +51,8 @@ public:
 
     void DrawPixel(int32_t x, int32_t y, glm::vec4 color, int32_t x_offset = 0, int32_t y_offset = 0);
 
+    void Resize(int32_t width, int32_t height);
+
     glm::vec4 clear_color{0.2f, 0.2f, 0.2f, 1.0f};
     uint32_t  fbo_id{0};
     uint32_t  tex_id{0};
@@ -83,6 +85,9 @@ public:
     void DrawPixel(int32_t x, int32_t y, glm::vec4 color);
     void ClearCanvas(glm::vec4 color = default_clear_color);
     void DrawCanvasToFBO(DrawFrameBuffer& FBO) const;
+
+    void Resize(int32_t set_width, int32_t set_height);
+    void SetOrigin(int32_t origin_x, int32_t origin_y);
 };
 
 struct Light
@@ -163,12 +168,9 @@ private:
 
     bool is_screen_dirty = true;
 
+    bool is_rendering_paused = false;
+
     std::unique_ptr<DrawFrameBuffer> draw_framebuffer;
     std::unique_ptr<Canvas> draw_canvas;
-
-
     double elapsed_time_seconds = 0.0f;
-
-
-
 };
