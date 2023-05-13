@@ -343,6 +343,19 @@ void ProjectApplication::RenderScene([[maybe_unused]] double dt)
 
     //RenderSpheresDelay(dt);
 
+    static bool was_accent_pressed = false;
+    if (IsKeyPressed(GLFW_KEY_GRAVE_ACCENT) && !was_accent_pressed)
+    {
+        is_rendering_paused = !is_rendering_paused;
+        was_accent_pressed = true;
+    }
+    else if (!IsKeyPressed(GLFW_KEY_GRAVE_ACCENT) && was_accent_pressed)
+    {
+        was_accent_pressed = false;
+    }
+        
+
+
     if (is_rendering_paused)
         return;
 
@@ -791,14 +804,17 @@ void ProjectApplication::RenderSpheresRealTime(double dt)
 {
     static glm::vec4 default_draw_color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
 
-    ClearFBO(screen_draw_fbo, clear_screen_color);
-    static bool is_first_frame = true;
-    if (is_first_frame)
-    {
-        draw_canvas->ClearCanvas(default_draw_color);
-        ClearFBO(draw_framebuffer.get()->fbo_id, clear_screen_color);
-        is_first_frame = false;
-    }
+    ClearFBO(screen_draw_fbo, clear_screen_color_default_fbo);
+    draw_canvas->ClearCanvas(default_draw_color);
+    ClearFBO(draw_framebuffer.get()->fbo_id, clear_screen_color);
+
+    //static bool is_first_frame = true;
+    //if (is_first_frame)
+    //{
+    //    draw_canvas->ClearCanvas(default_draw_color);
+    //    ClearFBO(draw_framebuffer.get()->fbo_id, clear_screen_color);
+    //    is_first_frame = false;
+    //}
 
     //Origin
     static glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -811,7 +827,7 @@ void ProjectApplication::RenderSpheresRealTime(double dt)
     static float t_min = distance_to_viewport;
     static float t_max = inf;
 
-    static glm::vec3 green_sphere_position = glm::vec3(-2.0f, 0.0f, 3.0f);
+    static glm::vec3 green_sphere_position = glm::vec3(-2.0f, 0.0f, 4.0f);
 
     if (IsKeyPressed(GLFW_KEY_D))
     {
@@ -887,10 +903,10 @@ void ProjectApplication::RenderSpheresRealTime(double dt)
 
 
     static glm::vec3 red_sphere_center = glm::vec3(0.0f, -1.0f, 3.0f);
-    red_sphere_center.y += 1.0f * dt;
+    //red_sphere_center.y += 1.0f * dt;
 
     static glm::vec3 blue_sphere_center = glm::vec3(2.0f, 0.0f, 4.0f);
-    blue_sphere_center.x -= 1.0f * dt;
+    //blue_sphere_center.x -= 1.0f * dt;
 
     Sphere sphere_green{green_sphere_position, glm::vec3(0.0f, 1.0f, 0.0f), 1.0f};
     Sphere sphere_red{red_sphere_center, glm::vec3(1.0f, 0.0f, 0.0f), 1.0f};
@@ -989,44 +1005,44 @@ void ProjectApplication::RenderUI([[maybe_unused]] double dt)
         ImGui::Text("Canvas Resolution (Width, Height): %d %d", draw_canvas.get()->width, draw_canvas.get()->height);
         ImGui::Text("Canvas Origin (x, y): %d %d", draw_canvas.get()->origin_x, draw_canvas.get()->origin_y);
 
-        static float set_fbo_resolution[2] = {draw_framebuffer.get()->width, draw_framebuffer.get()->height};
-        ImGui::DragFloat2("Set new DrawFBO Resolution (Width, Height)", &set_fbo_resolution[0]);
-        if (ImGui::Button("Resize DrawFBO"))
-        {
-            draw_framebuffer->Resize(set_fbo_resolution[0], set_fbo_resolution[1]);
-            static glm::vec4 default_draw_color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-            draw_canvas->ClearCanvas(default_draw_color);
+        //static float set_fbo_resolution[2] = {draw_framebuffer.get()->width, draw_framebuffer.get()->height};
+        //ImGui::DragFloat2("Set new DrawFBO Resolution (Width, Height)", &set_fbo_resolution[0]);
+        //if (ImGui::Button("Resize DrawFBO"))
+        //{
+        //    draw_framebuffer->Resize(set_fbo_resolution[0], set_fbo_resolution[1]);
+        //    static glm::vec4 default_draw_color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+        //    draw_canvas->ClearCanvas(default_draw_color);
 
-            ClearFBO(screen_draw_fbo, clear_screen_color);
-            ClearFBO(draw_framebuffer.get()->fbo_id, clear_screen_color);
-        }
-
-
-        static float set_canvas_resolution[2] = {draw_canvas.get()->width, draw_canvas.get()->height};
-        ImGui::DragFloat2("Set new Canvas Resolution (Width, Height)", &set_canvas_resolution[0]);
-        if (ImGui::Button("Resize Canvas"))
-        {
-            draw_canvas->Resize(set_canvas_resolution[0], set_canvas_resolution[1]);
-            static glm::vec4 default_draw_color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-            draw_canvas->ClearCanvas(default_draw_color);
-
-            ClearFBO(screen_draw_fbo, clear_screen_color);
-            ClearFBO(draw_framebuffer.get()->fbo_id, clear_screen_color);
-        }
+        //    ClearFBO(screen_draw_fbo, clear_screen_color);
+        //    ClearFBO(draw_framebuffer.get()->fbo_id, clear_screen_color);
+        //}
 
 
-        if (ImGui::Button("Center Canvas"))
-        {
-            int32_t canvas_origin_x = draw_framebuffer.get()->width / 2 -  draw_canvas.get()->width / 2;
-            int32_t canvas_origin_y = draw_framebuffer.get()->height / 2 - draw_canvas.get()->height / 2;
-            draw_canvas->SetOrigin(canvas_origin_x, canvas_origin_y);
+        //static float set_canvas_resolution[2] = {draw_canvas.get()->width, draw_canvas.get()->height};
+        //ImGui::DragFloat2("Set new Canvas Resolution (Width, Height)", &set_canvas_resolution[0]);
+        //if (ImGui::Button("Resize Canvas"))
+        //{
+        //    draw_canvas->Resize(set_canvas_resolution[0], set_canvas_resolution[1]);
+        //    static glm::vec4 default_draw_color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+        //    draw_canvas->ClearCanvas(default_draw_color);
 
-            static glm::vec4 default_draw_color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-            draw_canvas->ClearCanvas(default_draw_color);
+        //    ClearFBO(screen_draw_fbo, clear_screen_color);
+        //    ClearFBO(draw_framebuffer.get()->fbo_id, clear_screen_color);
+        //}
 
-            ClearFBO(screen_draw_fbo, clear_screen_color);
-            ClearFBO(draw_framebuffer.get()->fbo_id, clear_screen_color);
-        }
+
+        //if (ImGui::Button("Center Canvas"))
+        //{
+        //    int32_t canvas_origin_x = draw_framebuffer.get()->width / 2 -  draw_canvas.get()->width / 2;
+        //    int32_t canvas_origin_y = draw_framebuffer.get()->height / 2 - draw_canvas.get()->height / 2;
+        //    draw_canvas->SetOrigin(canvas_origin_x, canvas_origin_y);
+
+        //    static glm::vec4 default_draw_color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+        //    draw_canvas->ClearCanvas(default_draw_color);
+
+        //    ClearFBO(screen_draw_fbo, clear_screen_color);
+        //    ClearFBO(draw_framebuffer.get()->fbo_id, clear_screen_color);
+        //}
 
         static float resize_percentage = 1.0f;
         static float resize_percentage_canvas = 1.0f;

@@ -156,6 +156,7 @@ private:
     std::queue<std::function<void()>> renderCommandQueue;
 
     //for the default framebuffer
+    glm::vec4 clear_screen_color_default_fbo{0.4f, 0.4f, 0.4f, 1.0f};
     glm::vec4 clear_screen_color{0.2f, 0.2f, 0.2f, 1.0f};
 
     uint32_t currently_binded_fbo;
