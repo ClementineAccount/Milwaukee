@@ -1031,18 +1031,7 @@ void ProjectApplication::RenderUI([[maybe_unused]] double dt)
         //}
 
 
-        //if (ImGui::Button("Center Canvas"))
-        //{
-        //    int32_t canvas_origin_x = draw_framebuffer.get()->width / 2 -  draw_canvas.get()->width / 2;
-        //    int32_t canvas_origin_y = draw_framebuffer.get()->height / 2 - draw_canvas.get()->height / 2;
-        //    draw_canvas->SetOrigin(canvas_origin_x, canvas_origin_y);
 
-        //    static glm::vec4 default_draw_color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-        //    draw_canvas->ClearCanvas(default_draw_color);
-
-        //    ClearFBO(screen_draw_fbo, clear_screen_color);
-        //    ClearFBO(draw_framebuffer.get()->fbo_id, clear_screen_color);
-        //}
 
         static float resize_percentage = 1.0f;
         static float resize_percentage_canvas = 1.0f;
@@ -1071,6 +1060,36 @@ void ProjectApplication::RenderUI([[maybe_unused]] double dt)
 
             draw_canvas->Resize(canvas_width, canvas_height);
             draw_canvas->SetOrigin(canvas_origin_x, canvas_origin_y);
+
+            static glm::vec4 default_draw_color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+            draw_canvas->ClearCanvas(default_draw_color);
+
+            ClearFBO(screen_draw_fbo, clear_screen_color);
+            ClearFBO(draw_framebuffer.get()->fbo_id, clear_screen_color);
+        }
+
+        static int32_t canvas_origin_set[2] = {draw_canvas.get()->origin_x, draw_canvas.get()->origin_y};
+        ImGui::DragInt2("Set canvas origin", &canvas_origin_set[0]);
+        if ((canvas_origin_set[0] != draw_canvas.get()->origin_x) || (canvas_origin_set[1] != draw_canvas.get()->origin_y))
+        {
+            draw_canvas->SetOrigin(canvas_origin_set[0], canvas_origin_set[1]);
+            canvas_origin_set[0] = draw_canvas.get()->origin_x;
+            canvas_origin_set[1] = draw_canvas.get()->origin_y;
+
+            static glm::vec4 default_draw_color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+            //draw_canvas->ClearCanvas(default_draw_color);
+
+            //ClearFBO(screen_draw_fbo, clear_screen_color);
+            //ClearFBO(draw_framebuffer.get()->fbo_id, clear_screen_color);
+        }
+
+        if (ImGui::Button("Center Canvas"))
+        {
+            int32_t canvas_origin_x = draw_framebuffer.get()->width / 2 -  draw_canvas.get()->width / 2;
+            int32_t canvas_origin_y = draw_framebuffer.get()->height / 2 - draw_canvas.get()->height / 2;
+            draw_canvas->SetOrigin(canvas_origin_x, canvas_origin_y);
+            canvas_origin_set[0] = draw_canvas.get()->origin_x;
+            canvas_origin_set[1] = draw_canvas.get()->origin_y;
 
             static glm::vec4 default_draw_color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
             draw_canvas->ClearCanvas(default_draw_color);
