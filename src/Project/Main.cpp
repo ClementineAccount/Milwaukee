@@ -1,8 +1,9 @@
+
 #include <Project/ProjectApplication.hpp>
 
 int main(int argc, char* argv[])
 {
-    ProjectApplication application;
+    Milwaukee::ProjectApplication application;
     application.Run();
     return 0;
 }

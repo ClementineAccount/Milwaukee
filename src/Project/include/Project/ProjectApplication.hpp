@@ -14,6 +14,12 @@
 #include <functional>
 #include <chrono>
 
+
+namespace Milwaukee
+{
+
+
+
 //Stolen from Fwog
 class Timer
 {
@@ -100,6 +106,30 @@ public:
 };
 
 
+struct Sphere
+{
+public:
+    bool is_rendering = true;
+    void intersection_check_ray(glm::vec3 ray_origin, glm::vec3 ray_direction);
+};
+
+class RaycastScene
+{
+
+
+private:
+    std::vector<Sphere> sphere_list;
+
+    glm::vec4 background_color;
+
+    //Could change sphere to surface I guess? It checks against the sphere_list anyways
+    void ClosestIntersection(glm::vec3 origin, glm::vec3 ray, float t_min, float t_max, float& closest_t, Sphere* closest_sphere);
+    glm::vec4 TraceRay(glm::vec3 startPoint, glm::vec3 ray, float t_min, float t_max);
+
+    static constexpr float inf = std::numeric_limits<float>::max();
+};
+
+
 class ProjectApplication final : public Application
 {
 protected:
@@ -175,3 +205,6 @@ private:
     std::unique_ptr<Canvas> draw_canvas;
     double elapsed_time_seconds = 0.0f;
 };
+
+
+}

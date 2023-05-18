@@ -18,7 +18,7 @@ FetchContent_MakeAvailable(spdlog)
 FetchContent_Declare(
     tracy
     GIT_REPOSITORY  https://github.com/wolfpld/tracy.git
-    GIT_TAG         master
+    GIT_TAG         v0.9.1
     GIT_SHALLOW     TRUE
     GIT_PROGRESS    TRUE
 )
@@ -31,7 +31,6 @@ option(TRACY_ENABLE "Enable profiling" ON)
 option(TRACY_ONLY_IPV4 "IPv4 only" ON)
 message("Fetching tracy")
 FetchContent_MakeAvailable(tracy)
-
 #----------------------------------------------------------------------
 
 FetchContent_Declare(

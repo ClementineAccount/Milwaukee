@@ -1,3 +1,5 @@
+
+
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
 #define STB_IMAGE_IMPLEMENTATION
@@ -8,6 +10,9 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <imgui.h>
+
+#include <tracy/Tracy.hpp>
+#include <tracy/TracyOpenGL.hpp>
 
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/mat4x4.hpp>
@@ -23,6 +28,10 @@
 #include <queue>
 #include <set>
 #include <iostream>
+
+namespace Milwaukee
+{
+
 
 
 Canvas::Canvas(int32_t width, int32_t height, int32_t origin_x, int32_t origin_y)
@@ -84,7 +93,6 @@ void DrawFrameBuffer::Resize(int32_t width, int32_t height)
     glNamedFramebufferTexture(fbo_id, GL_COLOR_ATTACHMENT0, tex_id, 0);
 }
 
-
 DrawFrameBuffer::DrawFrameBuffer(int32_t width, int32_t height)
 {
     this->width = width;
@@ -110,6 +118,80 @@ DrawFrameBuffer::DrawFrameBuffer(int32_t width, int32_t height)
 void DrawFrameBuffer::DrawPixel(int32_t x, int32_t y, glm::vec4 color, int32_t x_offset, int32_t y_offset)
 {
     glTextureSubImage2D(tex_id, 0, x + x_offset, y + y_offset, 1, 1, GL_RGBA, GL_FLOAT, glm::value_ptr(color));
+}
+
+
+
+void RaycastScene::ClosestIntersection(glm::vec3 origin, glm::vec3 ray, float t_min, float t_max, float& closest_t, Sphere* closest_sphere)
+{
+    //Assume there were no sphere intersections first
+    closest_t = inf;
+
+    //This could be the index instead too. Would be safer than a pointer but same amount of space complexity.
+    closest_sphere = nullptr;
+
+    //size_t closest_sphere_index = 0;
+    //for (size_t i = 0; i < sphere_list.size(); ++i)
+    //{
+    //    glm::vec2 t_pairs = intersect_ray_sphere(origin, ray, sphere_list[i].center, sphere_list[i].radius);
+
+    //    auto update_closest = [&](float t_value)
+    //    {
+    //        if (t_value > t_min && t_value < t_max && t_value < closest_t)
+    //        {
+    //            closest_t = t_value;
+    //            closest_sphere_index = i;
+    //        }
+    //    };
+
+    //    update_closest(t_pairs.x);
+    //    update_closest(t_pairs.y);
+    //}
+    //closest_sphere = &sphere_list[closest_sphere_index];
+}
+
+glm::vec4 RaycastScene::TraceRay(glm::vec3 startPoint, glm::vec3 ray, float t_min, float t_max)
+{
+
+    float closest_t = inf;
+    glm::vec4 draw_color = background_color; //Background color
+
+    if (sphere_list.empty()) //Draw it to the canvas (so this should probably pass in a canvas or return a color
+        return background_color;
+
+
+    //This should be a 'get closest intersection' I think?
+
+    //size_t closest_sphere_index = 0;
+    //for (size_t i = 0; i < sphere_list.size(); ++i)
+    //{
+    //    glm::vec2 t_pairs = intersect_ray_sphere(origin, ray, sphere_list[i].center, sphere_list[i].radius);
+
+    //    auto update_closest = [&](float t_value)
+    //    {
+    //        if (t_value > t_min && t_value < t_max && t_value < closest_t)
+    //        {
+    //            closest_t = t_value;
+    //            closest_sphere_index = i;
+    //            draw_color = glm::vec4(sphere_list[i].color, 1.0f);
+    //        }
+    //    };
+
+    //    update_closest(t_pairs.x);
+    //    update_closest(t_pairs.y);
+    //}
+    //if (closest_t == inf)
+    //{
+    //    return default_draw_color;
+    //}
+
+    //glm::vec3 P = origin + closest_t * ray;
+    //glm::vec3 normal = P - sphere_list[closest_sphere_index].center;
+    //normal = glm::normalize(normal);
+
+
+    //return draw_color * compute_lighting(P, normal, directional_light);
+
 }
 
 
@@ -802,6 +884,9 @@ void ProjectApplication::RenderSpheresDelay(double dt)
 
 void ProjectApplication::RenderSpheresRealTime(double dt)
 {
+    ZoneScopedC(tracy::Color::Green);
+
+
     static glm::vec4 default_draw_color = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
 
     ClearFBO(screen_draw_fbo, clear_screen_color_default_fbo);
@@ -979,7 +1064,6 @@ void ProjectApplication::RenderSpheresRealTime(double dt)
             }
         }
     }
-
 
     draw_canvas->DrawCanvasToFBO(*draw_framebuffer);
     DrawPixelsToScreen();
@@ -1172,4 +1256,7 @@ bool ProjectApplication::MakeShader(std::string_view vertexShaderFilePath, std::
     glDeleteShader(fragmentShader);
 
     return true;
+}
+
+
 }
