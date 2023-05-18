@@ -4,3 +4,8 @@ A simple software renderer for experimentation and education, Milwuakee is the c
 
 
 ![image](https://user-images.githubusercontent.com/26779639/233997191-9cf9e9e5-d990-471a-95a3-ef09820b90e3.png)
+
+# Software Rasterizer Video One
+
+https://github.com/ClementineAccount/Milwaukee/assets/26779639/b39ab960-842b-4c89-9bba-c90466c0a4cd
+
