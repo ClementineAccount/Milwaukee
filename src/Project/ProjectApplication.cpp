@@ -923,6 +923,33 @@ void ProjectApplication::RenderSpheresRealTime(double dt)
         green_sphere_position.x -= 1.0f * dt;
     }
 
+    if (IsKeyPressed(GLFW_KEY_G))
+    {
+        cameraPos.x -= 1.0f * dt;
+    }
+    else if (IsKeyPressed(GLFW_KEY_J))
+    {
+        cameraPos.x += 1.0f * dt;
+    }
+
+    if (IsKeyPressed(GLFW_KEY_Y))
+    {
+        cameraPos.z += 1.0f * dt;
+    }
+    else if (IsKeyPressed(GLFW_KEY_H))
+    {
+        cameraPos.z -= 1.0f * dt;
+    }
+
+    if (IsKeyPressed(GLFW_KEY_T))
+    {
+        cameraPos.y += 1.0f * dt;
+    }
+    else if (IsKeyPressed(GLFW_KEY_U))
+    {
+        cameraPos.y -= 1.0f * dt;
+    }
+
     if (IsKeyPressed(GLFW_KEY_W))
     {
         green_sphere_position.y += 1.0f * dt;
@@ -955,6 +982,36 @@ void ProjectApplication::RenderSpheresRealTime(double dt)
         {
             intensity += light.intensity * n_dot_l /(glm::length(normal) * glm::length(light.direction));
         }
+
+        return intensity;
+    };
+
+    auto compute_lighting_diffuse_and_specular = [&](glm::vec3 point, glm::vec3 normal, glm::vec3 v, Light light, float s)
+    {
+        float intensity = 0.0f;
+        float intensity_diffuse = 0.0f;
+        float intensity_specular = 0.0f;
+        float n_dot_l = glm::dot(normal, light.direction);
+        if (n_dot_l > 0.0f)
+        {
+            intensity_diffuse = light.intensity * n_dot_l / (glm::length(normal) * glm::length(light.direction));
+        }
+
+        glm::vec3 reflect_ray = (2.0f * glm::dot(normal, light.direction) * normal) - light.direction;
+        float reflect_ray_dot_v = glm::dot(reflect_ray, v);
+
+        if (reflect_ray_dot_v > 0.0f)
+        {
+
+            float length = glm::length(reflect_ray) * glm::length(v);
+            float lhs = reflect_ray_dot_v / length;
+            float pow_res = powf(lhs, s);
+            intensity_specular = light.intensity * pow_res;
+        }
+
+        intensity = intensity_diffuse + intensity_specular;
+
+
         return intensity;
     };
 
@@ -1028,17 +1085,19 @@ void ProjectApplication::RenderSpheresRealTime(double dt)
             return default_draw_color;
         }
 
-        glm::vec3 P = origin + closest_t * ray;
+        glm::vec3 P = origin + (closest_t * ray);
         glm::vec3 normal = P - sphere_list[closest_sphere_index].center;
         normal = glm::normalize(normal);
 
+        glm::vec3 view = glm::normalize(ray);
 
-        return draw_color * compute_lighting(P, normal, directional_light);
+        //return draw_color * compute_lighting(P, normal, directional_light);
+        return draw_color * compute_lighting_diffuse_and_specular(P, normal, view, directional_light, 50.0f);
 
         //return draw_color;
     };
 
-    glm::vec3 origin = glm::vec3(0.0f, 0.0f, 0.0f);
+    glm::vec3 origin = cameraPos;
     std::vector<Sphere> spheres{sphere_red, sphere_green, sphere_blue};
 
     int curr_x = -canvas_width / 2;
