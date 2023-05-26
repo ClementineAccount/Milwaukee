@@ -101,7 +101,7 @@ struct Light
     //Directional light by default
 public:
     float intensity = 0.6f;
-    glm::vec3 direction = glm::vec3(1.0f, 3.0f, 3.0f);
+    glm::vec3 direction = glm::normalize(glm::vec3(1.0f, 3.0f, 3.0f));
 
 };
 
@@ -110,7 +110,12 @@ struct Sphere
 {
 public:
     bool is_rendering = true;
+
+    //considering the member variable option instead of pass by reference the sphere
     void intersection_check_ray(glm::vec3 ray_origin, glm::vec3 ray_direction);
+
+    float radius;
+    glm::vec3 center;
 };
 
 class RaycastScene
@@ -123,6 +128,10 @@ private:
     glm::vec4 background_color;
 
     //Could change sphere to surface I guess? It checks against the sphere_list anyways
+    glm::vec2 IntersectRaySphere(glm::vec3 origin, glm::vec3 ray, glm::vec3 sphere_center, float sphere_radius);
+
+    float compute_lighting(glm::vec3 point, glm::vec3 normal, glm::vec3 v, Light light, float specular_power);
+
     void ClosestIntersection(glm::vec3 origin, glm::vec3 ray, float t_min, float t_max, float& closest_t, Sphere* closest_sphere);
     glm::vec4 TraceRay(glm::vec3 startPoint, glm::vec3 ray, float t_min, float t_max);
 

@@ -121,6 +121,30 @@ void DrawFrameBuffer::DrawPixel(int32_t x, int32_t y, glm::vec4 color, int32_t x
 }
 
 
+glm::vec2 RaycastScene::IntersectRaySphere(glm::vec3 origin, glm::vec3 ray, glm::vec3 sphere_centre, float sphere_radius)
+{
+    glm::vec3 CO = origin - sphere_centre;
+
+    //solving with quadratic formula
+    float a = glm::dot(ray, ray);
+    float b = 2 * glm::dot(CO, ray);
+    float c = glm::dot(CO, CO) - sphere_radius * sphere_radius;
+
+    float discrim = b * b - 4 * a * c;
+
+    //x = t1, y = t2
+    //Negative values are rejected
+    glm::vec2 t_pairs(inf, inf);
+
+    if (discrim < 0)
+    {
+        return t_pairs;
+    }
+
+    t_pairs.x = (-b + sqrt(discrim) / (2 * a));
+    t_pairs.y = (-b - sqrt(discrim) / (2 * a));
+    return t_pairs;
+}
 
 void RaycastScene::ClosestIntersection(glm::vec3 origin, glm::vec3 ray, float t_min, float t_max, float& closest_t, Sphere* closest_sphere)
 {
@@ -130,24 +154,24 @@ void RaycastScene::ClosestIntersection(glm::vec3 origin, glm::vec3 ray, float t_
     //This could be the index instead too. Would be safer than a pointer but same amount of space complexity.
     closest_sphere = nullptr;
 
-    //size_t closest_sphere_index = 0;
-    //for (size_t i = 0; i < sphere_list.size(); ++i)
-    //{
-    //    glm::vec2 t_pairs = intersect_ray_sphere(origin, ray, sphere_list[i].center, sphere_list[i].radius);
+    size_t closest_sphere_index = 0;
+    for (size_t i = 0; i < sphere_list.size(); ++i)
+    {
+        glm::vec2 t_pairs = IntersectRaySphere(origin, ray, sphere_list[i].center, sphere_list[i].radius);
 
-    //    auto update_closest = [&](float t_value)
-    //    {
-    //        if (t_value > t_min && t_value < t_max && t_value < closest_t)
-    //        {
-    //            closest_t = t_value;
-    //            closest_sphere_index = i;
-    //        }
-    //    };
+        auto update_closest = [&](float t_value)
+        {
+            if (t_value > t_min && t_value < t_max && t_value < closest_t)
+            {
+                closest_t = t_value;
+                closest_sphere_index = i;
+            }
+        };
 
-    //    update_closest(t_pairs.x);
-    //    update_closest(t_pairs.y);
-    //}
-    //closest_sphere = &sphere_list[closest_sphere_index];
+        update_closest(t_pairs.x);
+        update_closest(t_pairs.y);
+    }
+    closest_sphere = &sphere_list[closest_sphere_index];
 }
 
 glm::vec4 RaycastScene::TraceRay(glm::vec3 startPoint, glm::vec3 ray, float t_min, float t_max)
@@ -158,6 +182,27 @@ glm::vec4 RaycastScene::TraceRay(glm::vec3 startPoint, glm::vec3 ray, float t_mi
 
     if (sphere_list.empty()) //Draw it to the canvas (so this should probably pass in a canvas or return a color
         return background_color;
+
+    Sphere* closest_sphere = nullptr;
+    ClosestIntersection(startPoint, ray, t_min, t_max, closest_t, closest_sphere);
+
+    if (closest_sphere != nullptr)
+    {
+        //Do the lighting stuff for it
+        glm::vec3 P = startPoint + closest_t * ray;
+        glm::vec3 normal = P - closest_sphere->center;
+        normal = glm::normalize(normal);
+
+        //Dummy placeholder stuff
+        Light directional_light;
+
+
+        return draw_color * compute_lighting(P, normal, -ray, directional_light, 500.0f);
+    }
+    else
+    {
+        return background_color;
+    }
 
 
     //This should be a 'get closest intersection' I think?
@@ -991,12 +1036,14 @@ void ProjectApplication::RenderSpheresRealTime(double dt)
         float intensity = 0.0f;
         float intensity_diffuse = 0.0f;
         float intensity_specular = 0.0f;
+
         float n_dot_l = glm::dot(normal, light.direction);
         if (n_dot_l > 0.0f)
         {
             intensity_diffuse = light.intensity * n_dot_l / (glm::length(normal) * glm::length(light.direction));
         }
 
+        
         glm::vec3 reflect_ray = (2.0f * glm::dot(normal, light.direction) * normal) - light.direction;
         float reflect_ray_dot_v = glm::dot(reflect_ray, v);
 
