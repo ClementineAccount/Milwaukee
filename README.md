@@ -1,6 +1,6 @@
 # Milwaukee
 
-Set to Read-Only as Milwaukee has been ported over to the [Albuquerque project](https://github.com/ClementineAccount/Albuquerque) so progress on Milwaukee and the software rasterizer or raycaster stuff would be in that repo instead.
+Set to Archived as Milwaukee has been ported over to the [Albuquerque project](https://github.com/ClementineAccount/Albuquerque) so progress on Milwaukee and the software rasterizer or raycaster stuff would be in that repo instead.
 
 A simple software renderer for experimentation and education, Milwuakee is the codename for my the shared codebase for rendering projects that do not use the GPU for any rendering logic beyond the final swapchain drawing (although whether by a Pixel Buffer Object, through Compute Shader, Bit blit to a texture or framebuffer depends on the project). It does not use the rasterization stage in the render pipeline. 
 
